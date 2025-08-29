@@ -14,16 +14,240 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          response: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          response: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          response?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      daily_reports: {
+        Row: {
+          chaos_renewed: number | null
+          chaos_to_renew: number | null
+          created_at: string
+          cross_selling: number | null
+          daily_strategy: string | null
+          date: string
+          difficulties: string | null
+          ended_at: string | null
+          forecast_amount: number | null
+          id: string
+          mood: string | null
+          onboarding: number | null
+          sales_amount: number | null
+          sketchup_renewed: number | null
+          sketchup_to_renew: number | null
+          started_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chaos_renewed?: number | null
+          chaos_to_renew?: number | null
+          created_at?: string
+          cross_selling?: number | null
+          daily_strategy?: string | null
+          date?: string
+          difficulties?: string | null
+          ended_at?: string | null
+          forecast_amount?: number | null
+          id?: string
+          mood?: string | null
+          onboarding?: number | null
+          sales_amount?: number | null
+          sketchup_renewed?: number | null
+          sketchup_to_renew?: number | null
+          started_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chaos_renewed?: number | null
+          chaos_to_renew?: number | null
+          created_at?: string
+          cross_selling?: number | null
+          daily_strategy?: string | null
+          date?: string
+          difficulties?: string | null
+          ended_at?: string | null
+          forecast_amount?: number | null
+          id?: string
+          mood?: string | null
+          onboarding?: number | null
+          sales_amount?: number | null
+          sketchup_renewed?: number | null
+          sketchup_to_renew?: number | null
+          started_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      prize_achievements: {
+        Row: {
+          achieved_at: string
+          id: string
+          prize_id: string
+          progress: number | null
+          user_id: string
+        }
+        Insert: {
+          achieved_at?: string
+          id?: string
+          prize_id: string
+          progress?: number | null
+          user_id: string
+        }
+        Update: {
+          achieved_at?: string
+          id?: string
+          prize_id?: string
+          progress?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prize_achievements_prize_id_fkey"
+            columns: ["prize_id"]
+            isOneToOne: false
+            referencedRelation: "prizes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prizes: {
+        Row: {
+          created_at: string
+          created_by: string
+          deadline: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_for_all: boolean | null
+          target_users: string[] | null
+          title: string
+          updated_at: string
+          value_or_bonus: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_for_all?: boolean | null
+          target_users?: string[] | null
+          title: string
+          updated_at?: string
+          value_or_bonus?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_for_all?: boolean | null
+          target_users?: string[] | null
+          title?: string
+          updated_at?: string
+          value_or_bonus?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          created_at: string
+          daylin_reminder_time: string | null
+          id: string
+          notifications_enabled: boolean | null
+          theme: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daylin_reminder_time?: string | null
+          id?: string
+          notifications_enabled?: boolean | null
+          theme?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daylin_reminder_time?: string | null
+          id?: string
+          notifications_enabled?: boolean | null
+          theme?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_gestor: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      product_type: "trimble" | "chaos"
+      user_role: "vendedor" | "gestor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +374,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      product_type: ["trimble", "chaos"],
+      user_role: ["vendedor", "gestor"],
+    },
   },
 } as const
