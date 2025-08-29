@@ -132,6 +132,11 @@ const Ranking = () => {
           },
           cross_selling: metrics.cross_selling,
           onboarding: metrics.onboarding,
+          position_vendas: 0,
+          position_renovado_trimble: 0,
+          position_renovado_chaos: 0,
+          position_cross_selling: 0,
+          position_onboarding: 0,
         };
       }) || [];
 
