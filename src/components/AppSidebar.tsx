@@ -71,7 +71,7 @@ export function AppSidebar() {
 
         {/* Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className={isCollapsed ? "sr-only" : ""}>
+          <SidebarGroupLabel className={`${isCollapsed ? "sr-only" : ""} text-foreground font-medium`}>
             Menu Principal
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -85,7 +85,7 @@ export function AppSidebar() {
                          `flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium ${
                            isActive
                              ? "bg-primary text-primary-foreground shadow-sm"
-                             : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                             : "text-foreground hover:bg-muted hover:text-foreground"
                          }`
                        }
                     >
@@ -111,9 +111,9 @@ export function AppSidebar() {
                     {getInitials(profile.name)}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium">{profile.name}</span>
-                  <span className="text-xs text-muted-foreground capitalize">
+                 <div className="flex flex-col">
+                   <span className="text-sm font-medium text-foreground">{profile.name}</span>
+                   <span className="text-xs text-muted-foreground capitalize">
                     {profile.role}
                   </span>
                 </div>
@@ -125,7 +125,7 @@ export function AppSidebar() {
             onClick={signOut}
             variant="ghost"
             size="sm"
-            className={`${isCollapsed ? "w-8 h-8 p-0" : "w-full justify-start"} text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent`}
+            className={`${isCollapsed ? "w-8 h-8 p-0" : "w-full justify-start"} text-foreground hover:text-foreground hover:bg-muted`}
           >
             <LogOut className="h-4 w-4" />
             {!isCollapsed && <span className="ml-2">Sair</span>}
