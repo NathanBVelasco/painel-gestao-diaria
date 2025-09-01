@@ -43,6 +43,8 @@ const Dashboard = () => {
   const { profile, isGestor } = useAuth();
   const [period, setPeriod] = useState<Period>("HOJE");
   const [product, setProduct] = useState<Product>("TODOS");
+  const [selectedSeller, setSelectedSeller] = useState<string>("TODOS");
+  const [sellers, setSellers] = useState<Array<{id: string, name: string}>>([]);
   const [data, setData] = useState<DashboardData>({
     vendasTotais: 0,
     forecast: 0,
@@ -59,7 +61,28 @@ const Dashboard = () => {
   useEffect(() => {
     checkDaylinStatus();
     loadDashboardData();
-  }, [period, product, profile]);
+    if (isGestor) {
+      loadSellers();
+    }
+  }, [period, product, selectedSeller, profile]);
+
+  const loadSellers = async () => {
+    try {
+      const { data: profiles, error } = await supabase
+        .from("profiles")
+        .select("user_id, name")
+        .eq("role", "vendedor");
+
+      if (error) {
+        console.error("Error loading sellers:", error);
+        return;
+      }
+
+      setSellers(profiles?.map(p => ({ id: p.user_id, name: p.name })) || []);
+    } catch (error) {
+      console.error("Error loading sellers:", error);
+    }
+  };
 
   const checkDaylinStatus = async () => {
     if (!profile) return;
@@ -87,9 +110,11 @@ const Dashboard = () => {
     try {
       let query = supabase.from("daily_reports").select("*");
 
-      // Filter by user if not gestor
+      // Filter by user if not gestor or if gestor selected specific seller
       if (!isGestor) {
         query = query.eq("user_id", profile.user_id);
+      } else if (selectedSeller !== "TODOS") {
+        query = query.eq("user_id", selectedSeller);
       }
 
       // Apply period filter
@@ -259,7 +284,7 @@ const Dashboard = () => {
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Select value={period} onValueChange={(value: Period) => setPeriod(value)}>
             <SelectTrigger className="w-[140px]">
               <SelectValue />
@@ -282,6 +307,22 @@ const Dashboard = () => {
               <SelectItem value="CHAOS">Chaos</SelectItem>
             </SelectContent>
           </Select>
+
+          {isGestor && (
+            <Select value={selectedSeller} onValueChange={setSelectedSeller}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Vendedor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TODOS">Todos Vendedores</SelectItem>
+                {sellers.map((seller) => (
+                  <SelectItem key={seller.id} value={seller.id}>
+                    {seller.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
