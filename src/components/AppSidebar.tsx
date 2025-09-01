@@ -79,15 +79,15 @@ export function AppSidebar() {
               {navigation.map((item) => (
                 <SidebarMenuItem key={item.name}>
                   <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.href}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
-                          isActive
-                            ? "bg-primary text-primary-foreground shadow-sm"
-                            : "text-foreground hover:bg-muted"
-                        }`
-                      }
+                     <NavLink
+                       to={item.href}
+                       className={({ isActive }) =>
+                         `flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium ${
+                           isActive
+                             ? "bg-primary text-primary-foreground shadow-sm"
+                             : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                         }`
+                       }
                     >
                       <span className="text-lg">{item.emoji}</span>
                       {!isCollapsed && <span>{item.name}</span>}
@@ -125,7 +125,7 @@ export function AppSidebar() {
             onClick={signOut}
             variant="ghost"
             size="sm"
-            className={`${isCollapsed ? "w-8 h-8 p-0" : "w-full justify-start"} text-muted-foreground hover:text-foreground`}
+            className={`${isCollapsed ? "w-8 h-8 p-0" : "w-full justify-start"} text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent`}
           >
             <LogOut className="h-4 w-4" />
             {!isCollapsed && <span className="ml-2">Sair</span>}
