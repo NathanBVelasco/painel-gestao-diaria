@@ -204,8 +204,8 @@ Quando você teria uns 15 minutinhos? 😊`
     setConversations(prev => [...prev, newConversation]);
 
     try {
-      // Simulate AI response (replace with actual AI integration)
-      const aiResponse = generateAIResponse(userMessage);
+      // Generate AI response using Gemini
+      const aiResponse = await generateAIResponse(userMessage);
 
       // Save to database
       const { data, error } = await supabase
@@ -248,99 +248,23 @@ Quando você teria uns 15 minutinhos? 😊`
     }
   };
 
-  const generateAIResponse = (userMessage: string): string => {
-    const message = userMessage.toLowerCase();
+  // AI response generation using Gemini API
+  const generateAIResponse = async (userMessage: string): Promise<string> => {
+    try {
+      const response = await supabase.functions.invoke('ai-chat-gemini', {
+        body: { message: userMessage }
+      });
 
-    // Sales coaching responses
-    if (message.includes("objeção") || message.includes("cliente disse não")) {
-      return `🎯 **Estratégia para objeções:**
+      if (response.error) {
+        console.error('Erro ao chamar Edge Function:', response.error);
+        throw new Error(response.error.message || 'Erro na comunicação com a IA');
+      }
 
-**1. Ouça ativamente** - Deixe o cliente falar completamente
-**2. Empatie** - "Entendo sua preocupação..."
-**3. Questione** - Faça perguntas para entender a real objeção
-**4. Apresente valor** - Mostre benefícios específicos
-**5. Confirme** - "Isso resolve sua dúvida?"
-
-**Dica pro:** Objeções são sinais de interesse! O cliente está considerando a compra. 💪
-
-Qual foi a objeção específica? Posso te ajudar com uma resposta personalizada!`;
+      return response.data?.response || 'Desculpe, não consegui gerar uma resposta no momento.';
+    } catch (error) {
+      console.error('Erro ao gerar resposta da IA:', error);
+      return 'Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente em alguns instantes.';
     }
-
-    if (message.includes("renovação") || message.includes("renovar")) {
-      return `🔄 **Estratégia de Renovação Vencedora:**
-
-**30 dias antes:**
-• Ligue para saber como está a experiência
-• Identifique novas necessidades
-• Apresente novidades da versão
-
-**15 dias antes:**
-• Envie proposta de renovação
-• Ofereça incentivos (desconto, upgrade)
-• Agende reunião para alinhamento
-
-**5 dias antes:**
-• Follow-up urgente mas educado
-• Reforce consequências da interrupção
-• Facilite o processo de pagamento
-
-**Lembre-se:** Renovação não é venda, é continuidade de parceria! 🤝`;
-    }
-
-    if (message.includes("cross selling") || message.includes("venda cruzada")) {
-      return `🚀 **Cross Selling Inteligente:**
-
-**Timing perfeito:**
-• Cliente satisfeito com produto atual
-• Após resolver algum problema/dúvida
-• Durante renovação ou upgrade
-
-**Produtos complementares:**
-• SketchUp → LayOut (documentação)
-• Trimble → Chaos (renderização)
-• Solo → Pro (equipes maiores)
-
-**Abordagem natural:**
-"Vi que você tem usado bastante o [produto]. Já pensou em potencializar ainda mais com [complemento]?"
-
-**Dica ouro:** Mostre como o produto adicional resolve uma dor real! 💎`;
-    }
-
-    if (message.includes("meta") || message.includes("objetivo")) {
-      return `🎯 **Atingindo suas Metas:**
-
-**Estratégias comprovadas:**
-
-**1. Qualificação rigorosa** (30% do tempo)
-• Foque em leads com fit real
-• Faça perguntas certas antes de apresentar
-
-**2. Follow-up consistente** (40% do tempo)
-• 80% das vendas acontecem após 5 contatos
-• Use múltiplos canais (call, email, WhatsApp)
-
-**3. Apresentação de valor** (30% do tempo)
-• Conecte features aos benefícios do cliente
-• Use cases de sucesso similares
-
-**Lembre-se:** Consistência bate intensidade! Foque no processo, não só no resultado. 💪`;
-    }
-
-    // Generic helpful response
-    return `💡 **Como seu assistente de vendas, posso te ajudar com:**
-
-🔥 **Estratégias de vendas e renovação**
-📞 **Scripts para ligações e WhatsApp**
-✉️ **Templates de email profissionais**  
-🎯 **Técnicas para superar objeções**
-📈 **Dicas para bater suas metas**
-🤝 **Abordagens de cross-selling**
-
-**Seja específico!** Conte-me sobre sua situação atual ou desafio que posso dar conselhos personalizados.
-
-Ex: "Cliente disse que é muito caro" ou "Preciso de script para renovação"
-
-Vamos fechar mais negócios juntos! 🚀`;
   };
 
   const handleUseSuggestion = (content: string) => {
