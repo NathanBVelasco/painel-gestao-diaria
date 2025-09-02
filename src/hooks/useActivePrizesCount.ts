@@ -7,24 +7,42 @@ export function useActivePrizesCount() {
   const { profile } = useAuth();
 
   useEffect(() => {
-    if (!profile || profile.role !== 'gestor') {
+    if (!profile) {
       setCount(0);
       return;
     }
 
     const fetchActivePrizesCount = async () => {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('prizes')
-          .select('id')
+          .select('id, is_for_all, target_users')
           .eq('is_active', true);
+
+        const { data, error } = await query;
 
         if (error) {
           console.error('Error fetching active prizes count:', error);
           return;
         }
 
-        setCount(data?.length || 0);
+        if (!data) {
+          setCount(0);
+          return;
+        }
+
+        // Se for gestor, mostra todos os prêmios ativos
+        if (profile.role === 'gestor') {
+          setCount(data.length);
+          return;
+        }
+
+        // Se for vendedor, mostra apenas os prêmios destinados a ele
+        const relevantPrizes = data.filter(prize => {
+          return prize.is_for_all || (prize.target_users && prize.target_users.includes(profile.user_id));
+        });
+
+        setCount(relevantPrizes.length);
       } catch (error) {
         console.error('Error fetching active prizes count:', error);
       }
