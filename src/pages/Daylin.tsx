@@ -481,13 +481,9 @@ const Daylin = () => {
       }
     }
     
-    // If it's just numbers without decimal separators, treat as regular number
-    if (/^\d+$/.test(cleanValue)) {
-      return parseInt(cleanValue);
-    }
-    
-    // Fallback: remove dots and parse normally
-    const normalizedValue = cleanValue.replace(/\./g, '');
+    // For simple numbers like "44525", treat as the actual value (not cents)
+    // This means "44525" = R$ 44.525,00
+    const normalizedValue = cleanValue.replace(/\D/g, ''); // Remove any non-digits
     return parseFloat(normalizedValue) || 0;
   };
 
