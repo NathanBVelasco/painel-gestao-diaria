@@ -57,6 +57,29 @@ const Configuracoes = () => {
     loadUserData();
   }, [profile]);
 
+  // Apply theme when preferences change
+  useEffect(() => {
+    applyTheme(preferences.theme);
+  }, [preferences.theme]);
+
+  const applyTheme = (theme: string) => {
+    const root = document.documentElement;
+    
+    // Remove existing theme classes
+    root.classList.remove('dark');
+    
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else if (theme === 'system') {
+      // Check system preference
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (systemPrefersDark) {
+        root.classList.add('dark');
+      }
+    }
+    // 'light' theme doesn't need any classes (default)
+  };
+
   const loadUserData = async () => {
     if (!profile) return;
 
@@ -78,11 +101,14 @@ const Configuracoes = () => {
       if (error && error.code !== 'PGRST116') {
         console.error("Error loading preferences:", error);
       } else if (prefs) {
-        setPreferences({
+        const userPrefs = {
           theme: prefs.theme || "light",
           daylin_reminder_time: prefs.daylin_reminder_time || "09:00:00",
           notifications_enabled: prefs.notifications_enabled ?? true,
-        });
+        };
+        setPreferences(userPrefs);
+        // Apply theme immediately when loaded
+        applyTheme(userPrefs.theme);
       }
 
     } catch (error) {
@@ -221,7 +247,7 @@ const Configuracoes = () => {
 
       // Apply theme immediately
       if (newPrefs.theme) {
-        document.documentElement.classList.toggle('dark', newPrefs.theme === 'dark');
+        applyTheme(newPrefs.theme);
       }
 
     } catch (error) {
