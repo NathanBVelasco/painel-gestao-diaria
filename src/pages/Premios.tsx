@@ -268,7 +268,7 @@ const Premios = () => {
         created_by: profile.user_id,
         is_for_all: newPrize.is_for_all,
         target_users: newPrize.is_for_all ? [] : newPrize.target_users,
-        criteria_type: newPrize.criteria_type || null,
+        criteria_type: newPrize.criteria_type && newPrize.criteria_type !== "none" ? newPrize.criteria_type : null,
         criteria_target: newPrize.criteria_target || null,
         criteria_period: newPrize.criteria_period || null,
         is_active: true,
@@ -479,7 +479,7 @@ const Premios = () => {
                            <SelectValue placeholder="Selecione um tipo de meta" />
                          </SelectTrigger>
                          <SelectContent>
-                           <SelectItem value="">Sem critério específico</SelectItem>
+                           <SelectItem value="none">Sem critério específico</SelectItem>
                            <SelectItem value="sales_amount">
                              <div className="flex items-center gap-2">
                                <TrendingUp className="h-4 w-4" />
@@ -520,7 +520,7 @@ const Premios = () => {
                        </Select>
                      </div>
 
-                     {newPrize.criteria_type && (
+                     {newPrize.criteria_type && newPrize.criteria_type !== "none" && (
                        <>
                          <div className="grid grid-cols-2 gap-3">
                            <div className="space-y-2">
