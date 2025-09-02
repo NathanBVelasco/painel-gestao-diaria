@@ -41,6 +41,7 @@ interface DailyReport {
   sales_amount: number;
   cross_selling: number;
   onboarding: number;
+  onboarding_details?: string;
   packs_vendidos: number;
 }
 
@@ -62,6 +63,7 @@ interface SellerDaylinStatus {
   sales_amount?: number;
   cross_selling?: number;
   onboarding?: number;
+  onboarding_details?: string;
   packs_vendidos?: number;
 }
 
@@ -113,6 +115,7 @@ const Daylin = () => {
     sales_amount: "",
     cross_selling: "",
     onboarding: "",
+    onboarding_details: "",
     packs_vendidos: "",
   });
 
@@ -133,6 +136,7 @@ const Daylin = () => {
     sales_amount: "",
     cross_selling: "",
     onboarding: "",
+    onboarding_details: "",
     packs_vendidos: "",
   });
 
@@ -182,6 +186,7 @@ const Daylin = () => {
           sales_amount: data.sales_amount?.toString() || "",
           cross_selling: data.cross_selling?.toString() || "",
           onboarding: data.onboarding?.toString() || "",
+          onboarding_details: data.onboarding_details || "",
           packs_vendidos: data.packs_vendidos?.toString() || "",
         });
       }
@@ -219,7 +224,7 @@ const Daylin = () => {
       // Get today's reports for all sellers
       const { data: reports, error: reportsError } = await supabase
         .from("daily_reports")
-        .select("id, user_id, started_at, ended_at, mood, forecast_amount, sketchup_to_renew, chaos_to_renew, daily_strategy, difficulties, sketchup_renewed, chaos_renewed, sales_amount, cross_selling, onboarding, packs_vendidos")
+        .select("id, user_id, started_at, ended_at, mood, forecast_amount, sketchup_to_renew, chaos_to_renew, daily_strategy, difficulties, sketchup_renewed, chaos_renewed, sales_amount, cross_selling, onboarding, onboarding_details, packs_vendidos")
         .eq("date", today);
 
       if (reportsError) {
@@ -253,6 +258,7 @@ const Daylin = () => {
           sales_amount: report?.sales_amount,
           cross_selling: report?.cross_selling,
           onboarding: report?.onboarding,
+          onboarding_details: report?.onboarding_details,
           packs_vendidos: report?.packs_vendidos,
         };
       }) || [];
@@ -397,6 +403,7 @@ const Daylin = () => {
         sales_amount: parseDecimalValue(editReportForm.sales_amount),
         cross_selling: parseInt(editReportForm.cross_selling) || 0,
         onboarding: parseInt(editReportForm.onboarding) || 0,
+        onboarding_details: editReportForm.onboarding_details,
         packs_vendidos: parseInt(editReportForm.packs_vendidos) || 0,
       };
 
@@ -438,6 +445,7 @@ const Daylin = () => {
         sales_amount: "",
         cross_selling: "",
         onboarding: "",
+        onboarding_details: "",
         packs_vendidos: "",
       });
 
@@ -558,6 +566,7 @@ const Daylin = () => {
         sales_amount: parseDecimalValue(endForm.sales_amount),
         cross_selling: parseInt(endForm.cross_selling) || 0,
         onboarding: parseInt(endForm.onboarding) || 0,
+        onboarding_details: endForm.onboarding_details,
         packs_vendidos: parseInt(endForm.packs_vendidos) || 0,
       };
 
@@ -744,20 +753,21 @@ const Daylin = () => {
                                      variant="outline"
                                      onClick={() => {
                                        setEditingReport(null);
-                                       setEditReportForm({
-                                         mood: "",
-                                         sketchup_to_renew: "",
-                                         chaos_to_renew: "",
-                                         forecast_amount: "",
-                                         daily_strategy: "",
-                                         difficulties: "",
-                                         sketchup_renewed: "",
-                                         chaos_renewed: "",
-                                         sales_amount: "",
-                                         cross_selling: "",
-                                         onboarding: "",
-                                         packs_vendidos: "",
-                                       });
+                                        setEditReportForm({
+                                          mood: "",
+                                          sketchup_to_renew: "",
+                                          chaos_to_renew: "",
+                                          forecast_amount: "",
+                                          daily_strategy: "",
+                                          difficulties: "",
+                                          sketchup_renewed: "",
+                                          chaos_renewed: "",
+                                          sales_amount: "",
+                                          cross_selling: "",
+                                          onboarding: "",
+                                          onboarding_details: "",
+                                          packs_vendidos: "",
+                                        });
                                      }}
                                    >
                                      <X className="h-3 w-3" />
@@ -928,20 +938,21 @@ const Daylin = () => {
                                        variant="outline"
                                        onClick={() => {
                                          setEditingReport(seller.user_id);
-                                         setEditReportForm({
-                                           mood: seller.mood || "",
-                                           sketchup_to_renew: seller.sketchup_to_renew?.toString() || "",
-                                           chaos_to_renew: seller.chaos_to_renew?.toString() || "",
-                                           forecast_amount: formatDecimalForInput(seller.forecast_amount),
-                                           daily_strategy: seller.daily_strategy || "",
-                                           difficulties: seller.difficulties || "",
-                                           sketchup_renewed: seller.sketchup_renewed?.toString() || "",
-                                           chaos_renewed: seller.chaos_renewed?.toString() || "",
-                                           sales_amount: formatDecimalForInput(seller.sales_amount),
-                                           cross_selling: seller.cross_selling?.toString() || "",
-                                           onboarding: seller.onboarding?.toString() || "",
-                                           packs_vendidos: seller.packs_vendidos?.toString() || "",
-                                         });
+                                          setEditReportForm({
+                                            mood: seller.mood || "",
+                                            sketchup_to_renew: seller.sketchup_to_renew?.toString() || "",
+                                            chaos_to_renew: seller.chaos_to_renew?.toString() || "",
+                                            forecast_amount: formatDecimalForInput(seller.forecast_amount),
+                                            daily_strategy: seller.daily_strategy || "",
+                                            difficulties: seller.difficulties || "",
+                                            sketchup_renewed: seller.sketchup_renewed?.toString() || "",
+                                            chaos_renewed: seller.chaos_renewed?.toString() || "",
+                                            sales_amount: formatDecimalForInput(seller.sales_amount),
+                                            cross_selling: seller.cross_selling?.toString() || "",
+                                            onboarding: seller.onboarding?.toString() || "",
+                                            onboarding_details: seller.onboarding_details || "",
+                                            packs_vendidos: seller.packs_vendidos?.toString() || "",
+                                          });
                                        }}
                                      >
                                        <Edit className="h-3 w-3 mr-1" />
@@ -1007,12 +1018,19 @@ const Daylin = () => {
                                  </div>
                                )}
 
-                               {seller.ended_at && seller.difficulties && (
-                                 <div className="mt-3">
-                                   <span className="text-muted-foreground text-sm">Dificuldades:</span>
-                                   <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.difficulties}</p>
-                                 </div>
-                               )}
+                                {seller.ended_at && seller.difficulties && (
+                                  <div className="mt-3">
+                                    <span className="text-muted-foreground text-sm">Dificuldades:</span>
+                                    <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.difficulties}</p>
+                                  </div>
+                                )}
+
+                                {seller.ended_at && seller.onboarding_details && (
+                                  <div className="mt-3">
+                                    <span className="text-muted-foreground text-sm">Detalhes do Onboarding:</span>
+                                    <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.onboarding_details}</p>
+                                  </div>
+                                )}
                              </>
                            )}
                          </div>
@@ -1380,6 +1398,15 @@ const Daylin = () => {
                       </div>
                     </>
                   )}
+                  {todayReport.onboarding_details && (
+                    <>
+                      <Separator />
+                      <div>
+                        <span className="text-muted-foreground">Detalhes do Onboarding:</span>
+                        <p className="mt-1 text-sm">{todayReport.onboarding_details}</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             ) : (
@@ -1465,6 +1492,17 @@ const Daylin = () => {
                     value={endForm.packs_vendidos}
                     onChange={(e) => setEndForm({ ...endForm, packs_vendidos: e.target.value })}
                     placeholder="0"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="onboarding_details">Detalhes do Onboarding</Label>
+                  <Textarea
+                    id="onboarding_details"
+                    value={endForm.onboarding_details}
+                    onChange={(e) => setEndForm({ ...endForm, onboarding_details: e.target.value })}
+                    placeholder="Descreva os detalhes dos onboardings realizados..."
+                    rows={3}
                   />
                 </div>
 
