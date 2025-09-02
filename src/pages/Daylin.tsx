@@ -40,12 +40,29 @@ interface DailyReport {
   packs_vendidos: number;
 }
 
+interface SellerDaylinStatus {
+  id: string;
+  name: string;
+  user_id: string;
+  started_at?: string;
+  ended_at?: string;
+  mood?: string;
+  forecast_amount?: number;
+  sketchup_to_renew?: number;
+  chaos_to_renew?: number;
+  daily_strategy?: string;
+}
+
 const Daylin = () => {
-  const { profile } = useAuth();
+  const { profile, isGestor } = useAuth();
   const [todayReport, setTodayReport] = useState<DailyReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showEndDayAlert, setShowEndDayAlert] = useState(false);
+  
+  // Gestor states
+  const [sellersStatus, setSellersStatus] = useState<SellerDaylinStatus[]>([]);
+  const [gestorLoading, setGestorLoading] = useState(false);
 
   // Start day form state
   const [startForm, setStartForm] = useState({
@@ -68,9 +85,13 @@ const Daylin = () => {
   });
 
   useEffect(() => {
-    loadTodayReport();
-    checkEndDayAlert();
-  }, [profile]);
+    if (isGestor) {
+      loadSellersStatus();
+    } else {
+      loadTodayReport();
+      checkEndDayAlert();
+    }
+  }, [profile, isGestor]);
 
   const loadTodayReport = async () => {
     if (!profile) return;
@@ -115,6 +136,71 @@ const Daylin = () => {
       console.error("Error loading report:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSellersStatus = async () => {
+    if (!profile || !isGestor) return;
+
+    setGestorLoading(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Get all sellers (vendedor role)
+      const { data: sellers, error: sellersError } = await supabase
+        .from("profiles")
+        .select("id, name, user_id")
+        .eq("role", "vendedor");
+
+      if (sellersError) {
+        console.error("Error loading sellers:", sellersError);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar a lista de vendedores",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get today's reports for all sellers
+      const { data: reports, error: reportsError } = await supabase
+        .from("daily_reports")
+        .select("user_id, started_at, ended_at, mood, forecast_amount, sketchup_to_renew, chaos_to_renew, daily_strategy")
+        .eq("date", today);
+
+      if (reportsError) {
+        console.error("Error loading reports:", reportsError);
+        toast({
+          title: "Erro", 
+          description: "Não foi possível carregar os relatórios diários",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Combine sellers with their reports
+      const sellersWithStatus: SellerDaylinStatus[] = sellers?.map(seller => {
+        const report = reports?.find(r => r.user_id === seller.user_id);
+        return {
+          id: seller.id,
+          name: seller.name,
+          user_id: seller.user_id,
+          started_at: report?.started_at,
+          ended_at: report?.ended_at,
+          mood: report?.mood,
+          forecast_amount: report?.forecast_amount,
+          sketchup_to_renew: report?.sketchup_to_renew,
+          chaos_to_renew: report?.chaos_to_renew,
+          daily_strategy: report?.daily_strategy,
+        };
+      }) || [];
+
+      setSellersStatus(sellersWithStatus);
+
+    } catch (error) {
+      console.error("Error loading sellers status:", error);
+    } finally {
+      setGestorLoading(false);
     }
   };
 
@@ -247,7 +333,7 @@ const Daylin = () => {
     }
   };
 
-  if (loading) {
+  if (loading || gestorLoading) {
     return (
       <div className="space-y-6">
         <div className="animate-pulse space-y-4">
@@ -262,6 +348,171 @@ const Daylin = () => {
     );
   }
 
+  // Gestor View
+  if (isGestor) {
+    const sellersNotStarted = sellersStatus.filter(s => !s.started_at);
+    const sellersStarted = sellersStatus.filter(s => s.started_at && !s.ended_at);
+    const sellersFinished = sellersStatus.filter(s => s.ended_at);
+    const totalForecast = sellersStatus.reduce((acc, s) => acc + (s.forecast_amount || 0), 0);
+
+    return (
+      <div className="space-y-6 animate-fade-in">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            📊 Daylin - Painel Gerencial
+          </h1>
+          <p className="text-muted-foreground">
+            Acompanhe o status dos vendedores e suas metas do dia
+          </p>
+        </div>
+
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-warning" />
+                <span className="text-sm text-muted-foreground">Não iniciaram</span>
+              </div>
+              <p className="text-2xl font-bold text-warning">{sellersNotStarted.length}</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <Sun className="h-4 w-4 text-orange-500" />
+                <span className="text-sm text-muted-foreground">Em atividade</span>
+              </div>
+              <p className="text-2xl font-bold text-orange-500">{sellersStarted.length}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-success" />
+                <span className="text-sm text-muted-foreground">Finalizaram</span>
+              </div>
+              <p className="text-2xl font-bold text-success">{sellersFinished.length}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary" />
+                <span className="text-sm text-muted-foreground">Forecast Total</span>
+              </div>
+              <p className="text-lg font-bold text-primary">
+                R$ {totalForecast.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sellers Status */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Not Started */}
+          <Card className="card-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-warning" />
+                Vendedores que não iniciaram ({sellersNotStarted.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {sellersNotStarted.length === 0 ? (
+                <p className="text-muted-foreground">Todos os vendedores iniciaram o dia! 🎉</p>
+              ) : (
+                <div className="space-y-2">
+                  {sellersNotStarted.map(seller => (
+                    <div key={seller.id} className="p-3 rounded-lg bg-warning/10 border border-warning/20">
+                      <p className="font-medium text-warning-foreground">{seller.name}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Started Today */}
+          <Card className="card-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sun className="h-5 w-5 text-orange-500" />
+                Resumo dos que iniciaram ({sellersStarted.length + sellersFinished.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-96 overflow-y-auto">
+              {[...sellersStarted, ...sellersFinished].length === 0 ? (
+                <p className="text-muted-foreground">Nenhum vendedor iniciou o dia ainda.</p>
+              ) : (
+                <div className="space-y-4">
+                  {[...sellersStarted, ...sellersFinished].map(seller => (
+                    <div key={seller.id} className="p-4 rounded-lg bg-muted/50 border">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium">{seller.name}</h4>
+                        <div className="flex items-center gap-2">
+                          {seller.ended_at ? (
+                            <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Finalizado
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="bg-orange-500/10 text-orange-500 border-orange-500/20">
+                              <Sun className="w-3 h-3 mr-1" />
+                              Ativo
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Iniciou:</span>
+                          <p>{seller.started_at ? new Date(seller.started_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Forecast:</span>
+                          <p className="font-medium">R$ {(seller.forecast_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">SketchUp:</span>
+                          <p>{seller.sketchup_to_renew || 0}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Chaos:</span>
+                          <p>{seller.chaos_to_renew || 0}</p>
+                        </div>
+                      </div>
+
+                      {seller.mood && (
+                        <div className="mt-3">
+                          <span className="text-muted-foreground text-sm">Humor:</span>
+                          <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.mood}</p>
+                        </div>
+                      )}
+
+                      {seller.daily_strategy && (
+                        <div className="mt-3">
+                          <span className="text-muted-foreground text-sm">Estratégia:</span>
+                          <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.daily_strategy}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Vendedor View
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
