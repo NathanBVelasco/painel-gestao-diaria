@@ -1076,18 +1076,22 @@ const Premios = () => {
                     </p>
 
                     <div className="space-y-2 text-sm">
-                       <div className="flex justify-between">
-                         <span className="text-muted-foreground">Prêmio:</span>
-                         <span className="font-medium text-primary">{prize.value_or_bonus}</span>
-                       </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Prêmio:</span>
+                          <span className="font-medium text-primary">
+                            {prize.value_or_bonus?.includes('R$') || prize.value_or_bonus?.includes('$') || /^\d+/.test(prize.value_or_bonus || '') 
+                              ? `R$ ${parseFloat(prize.value_or_bonus?.replace(/[R$\s]/g, '') || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+                              : prize.value_or_bonus}
+                          </span>
+                        </div>
                        {prize.criteria_type && (
                          <div className="flex justify-between">
                            <span className="text-muted-foreground">Meta:</span>
                            <span className="flex items-center gap-2">
                              {getCriteriaIcon(prize.criteria_type)}
                              <span>
-                               {prize.criteria_target?.toLocaleString('pt-BR')}
-                               {prize.criteria_type === 'sales_amount' ? ' R$' : ''}
+                                {prize.criteria_target?.toLocaleString('pt-BR')}
+                                {prize.criteria_type === 'sales_amount' ? ' R$' : ''}
                                {' '}({getCriteriaPeriodLabel(prize.criteria_period || 'week')})
                              </span>
                            </span>
