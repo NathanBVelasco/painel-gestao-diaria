@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, Bot, Lightbulb, Target, MessageSquare, FileText, Phone, Mail, Paperclip, Image, File as FileIcon, X, Settings } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Send, Bot, Lightbulb, Target, MessageSquare, FileText, Phone, Mail, Paperclip, Image, File as FileIcon, X, Settings, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -39,17 +40,68 @@ const AssistenteAI = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [chatTone, setChatTone] = useState("amigavel");
-  const [loadingPreferences, setLoadingPreferences] = useState(false);
+  const [savingPreference, setSavingPreference] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const toneOptions = [
-    { value: "objetivo", label: "Objetivo", description: "Direto ao ponto, respostas concisas" },
-    { value: "explicativo", label: "Explicativo", description: "Detalhado e educativo" },
-    { value: "amigavel", label: "Amigável", description: "Caloroso e próximo" },
-    { value: "simpatico", label: "Simpático", description: "Carismático e empático" },
-    { value: "profissional", label: "Profissional", description: "Formal e técnico" }
-  ];
+  const loadUserPreferences = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('ai_chat_preferences')
+        .select('chat_tone')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+        console.error('Erro ao carregar preferências:', error);
+        return;
+      }
+
+      if (data) {
+        setChatTone(data.chat_tone);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar preferências:', error);
+    }
+  };
+
+  const saveUserPreference = async (newTone: string) => {
+    setSavingPreference(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('ai_chat_preferences')
+        .upsert(
+          { user_id: user.id, chat_tone: newTone },
+          { onConflict: 'user_id' }
+        );
+
+      if (error) {
+        console.error('Erro ao salvar preferência:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível salvar a preferência",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setChatTone(newTone);
+      toast({
+        title: "Preferência salva",
+        description: "Tom de resposta atualizado com sucesso",
+      });
+    } catch (error) {
+      console.error('Erro ao salvar preferência:', error);
+    } finally {
+      setSavingPreference(false);
+    }
+  };
 
   const loadConversations = async () => {
     try {
@@ -77,65 +129,6 @@ const AssistenteAI = () => {
       }
     } catch (error) {
       console.error('Erro ao carregar conversas:', error);
-    }
-  };
-
-  const loadChatPreferences = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('ai_chat_preferences')
-        .select('chat_tone')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Erro ao carregar preferências:', error);
-        return;
-      }
-
-      if (data) {
-        setChatTone(data.chat_tone);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar preferências:', error);
-    }
-  };
-
-  const saveChatTone = async (tone: string) => {
-    setLoadingPreferences(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error } = await supabase
-        .from('ai_chat_preferences')
-        .upsert({
-          user_id: user.id,
-          chat_tone: tone
-        });
-
-      if (error) {
-        console.error('Erro ao salvar preferências:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível salvar suas preferências",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      setChatTone(tone);
-      toast({
-        title: "Preferências salvas",
-        description: "Tom de resposta atualizado com sucesso"
-      });
-    } catch (error) {
-      console.error('Erro ao salvar preferências:', error);
-    } finally {
-      setLoadingPreferences(false);
     }
   };
 
@@ -358,8 +351,8 @@ const AssistenteAI = () => {
   };
 
   useEffect(() => {
+    loadUserPreferences();
     loadConversations();
-    loadChatPreferences();
   }, []);
 
   useEffect(() => {
@@ -458,36 +451,38 @@ Abraço,
         <Card className="lg:col-span-2 card-shadow">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Bot className="h-5 w-5 text-primary" />
-                  Chat de Vendas
-                </CardTitle>
-                <CardDescription>
-                  Converse comigo sobre estratégias, objeções e técnicas de venda
-                </CardDescription>
+              <div className="flex items-center gap-2">
+                <Bot className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle>Chat de Vendas</CardTitle>
+                  <CardDescription>
+                    Converse comigo sobre estratégias, objeções e técnicas de venda
+                  </CardDescription>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Settings className="h-4 w-4 text-muted-foreground" />
-                <Select 
-                  value={chatTone} 
-                  onValueChange={saveChatTone}
-                  disabled={loadingPreferences}
-                >
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {toneOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        <div>
-                          <div className="font-medium">{option.label}</div>
-                          <div className="text-xs text-muted-foreground">{option.description}</div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-1">
+                  <Label htmlFor="chat-tone" className="text-xs text-muted-foreground">
+                    Tom das respostas
+                  </Label>
+                  <Select 
+                    value={chatTone} 
+                    onValueChange={saveUserPreference}
+                    disabled={savingPreference}
+                  >
+                    <SelectTrigger id="chat-tone" className="w-[140px] h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="objetivo">Objetivo</SelectItem>
+                      <SelectItem value="explicativo">Explicativo</SelectItem>
+                      <SelectItem value="amigavel">Amigável</SelectItem>
+                      <SelectItem value="simpatico">Simpático</SelectItem>
+                      <SelectItem value="profissional">Profissional</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -769,12 +764,5 @@ Abraço,
     </div>
   );
 };
-
-// Simple User icon component
-const User = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-  </svg>
-);
 
 export default AssistenteAI;

@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { message, attachments = [], chatTone = "amigavel" } = await req.json();
+    const { message, attachments = [], chatTone = 'amigavel' } = await req.json();
 
     if (!message && attachments.length === 0) {
       throw new Error('Mensagem ou anexos são obrigatórios');
@@ -24,14 +24,31 @@ serve(async (req) => {
       throw new Error('GEMINI_API_KEY não configurada');
     }
 
-    // Definir estilo de resposta baseado no tom escolhido
-    const toneInstructions = {
-      objetivo: "Seja DIRETO e CONCISO. Use frases curtas, vá direto ao ponto, sem rodeios. Máximo 3-4 linhas por resposta.",
-      explicativo: "Seja DETALHADO e EDUCATIVO. Explique o 'porquê' de cada estratégia, forneça contexto, exemplos práticos e fundamentos.",
-      amigavel: "Seja CALOROSO e PRÓXIMO. Use um tom amistoso, empático, como se fosse um colega experiente dando conselhos.",
-      simpatico: "Seja CARISMÁTICO e EMPÁTICO. Use humor sutil quando apropriado, demonstre entusiasmo e energia positiva.",
-      profissional: "Seja FORMAL e TÉCNICO. Use linguagem corporativa, dados específicos, métricas e argumentos estruturados."
+    // Definir as características de cada tom
+    const toneConfig = {
+      objetivo: {
+        style: "seja direto e conciso. Use frases curtas e vá direto ao ponto. Evite floreios e foque apenas no essencial.",
+        example: "Resposta direta, sem rodeios, com informações práticas e imediatas."
+      },
+      explicativo: {
+        style: "seja detalhado e educativo. Explique o 'porquê' por trás das estratégias. Use exemplos e forneça contexto completo.",
+        example: "Resposta detalhada com explicações, contexto e exemplos práticos para melhor compreensão."
+      },
+      amigavel: {
+        style: "seja caloroso e próximo. Use uma linguagem acolhedora, inclua emojis e mantenha tom conversacional como se fosse um amigo experiente.",
+        example: "Resposta calorosa e próxima, com linguagem acolhedora e tom conversacional amigável."
+      },
+      simpatico: {
+        style: "seja carismático e empático. Demonstre compreensão pelos desafios do vendedor, use linguagem motivacional e inspiradora.",
+        example: "Resposta carismática e empática, com compreensão dos desafios e linguagem motivacional."
+      },
+      profissional: {
+        style: "seja formal e técnico. Use linguagem empresarial, termos técnicos apropriados e mantenha formalidade corporativa.",
+        example: "Resposta formal e técnica, com linguagem empresarial e termos técnicos apropriados."
+      }
     };
+
+    const currentTone = toneConfig[chatTone as keyof typeof toneConfig] || toneConfig.amigavel;
 
     // Prompt especializado em vendas de SketchUp/TotalCAD
     let systemPrompt = `Você é um assistente especializado em vendas de software CAD, especificamente SketchUp, LayOut e produtos Trimble. 
@@ -57,17 +74,16 @@ OBJEÇÕES COMUNS:
 - "Não temos orçamento agora"
 - "Vamos avaliar outras opções"
 
-TOM DE RESPOSTA ESCOLHIDO PELO USUÁRIO: ${toneInstructions[chatTone as keyof typeof toneInstructions] || toneInstructions.amigavel}
+TOM DE RESPOSTA PERSONALIZADO:
+${currentTone.style}
 
 DIRETRIZES GERAIS:
 - Use linguagem brasileira natural
 - Seja prático e focado em vendas
 - Ofereça scripts prontos quando apropriado
-- Inclua emojis moderadamente para engajamento (exceto no tom profissional)
 - Sempre termine com uma sugestão de próximo passo
-- Adapte sua resposta ao tom escolhido acima
 
-Responda sempre em português brasileiro com foco em vendas.`;
+Responda sempre em português brasileiro com foco em vendas seguindo o tom personalizado definido.`;
 
     // Processar anexos se houver
     const processedAttachments = [];
