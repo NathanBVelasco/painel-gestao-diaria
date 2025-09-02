@@ -446,6 +446,16 @@ const Daylin = () => {
     }
   };
 
+  // Helper function to format decimal values for display in inputs
+  const formatDecimalForInput = (value: number | undefined): string => {
+    if (!value || value === 0) return "";
+    // Convert to string with 2 decimal places and use comma as decimal separator
+    return value.toLocaleString('pt-BR', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
+  };
+
   // Helper function to parse decimal values in Brazilian format
   const parseDecimalValue = (value: string): number => {
     if (!value) return 0;
@@ -471,11 +481,9 @@ const Daylin = () => {
       }
     }
     
-    // If it's just numbers without decimal separators, treat as cents
-    // e.g., "445250" becomes 4452.50
+    // If it's just numbers without decimal separators, treat as regular number
     if (/^\d+$/.test(cleanValue)) {
-      const numValue = parseInt(cleanValue);
-      return numValue / 100;
+      return parseInt(cleanValue);
     }
     
     // Fallback: remove dots and parse normally
@@ -933,12 +941,12 @@ const Daylin = () => {
                                            mood: seller.mood || "",
                                            sketchup_to_renew: seller.sketchup_to_renew?.toString() || "",
                                            chaos_to_renew: seller.chaos_to_renew?.toString() || "",
-                                           forecast_amount: seller.forecast_amount?.toString() || "",
+                                           forecast_amount: formatDecimalForInput(seller.forecast_amount),
                                            daily_strategy: seller.daily_strategy || "",
                                            difficulties: seller.difficulties || "",
                                            sketchup_renewed: seller.sketchup_renewed?.toString() || "",
                                            chaos_renewed: seller.chaos_renewed?.toString() || "",
-                                           sales_amount: seller.sales_amount?.toString() || "",
+                                           sales_amount: formatDecimalForInput(seller.sales_amount),
                                            cross_selling: seller.cross_selling?.toString() || "",
                                            onboarding: seller.onboarding?.toString() || "",
                                            packs_vendidos: seller.packs_vendidos?.toString() || "",
