@@ -411,9 +411,11 @@ Abraço,
                         <div className="max-w-[80%] bg-muted p-3 rounded-lg">
                           <div className="prose prose-sm max-w-none">
                             {conv.response.split('\n').map((paragraph, pIndex) => (
-                              <p key={pIndex} className="mb-2 last:mb-0 text-sm">
-                                {paragraph}
-                              </p>
+                              <p key={pIndex} className="mb-2 last:mb-0 text-sm" 
+                                 dangerouslySetInnerHTML={{
+                                   __html: paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                 }}
+                              />
                             ))}
                           </div>
                         </div>
