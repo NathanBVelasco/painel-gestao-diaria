@@ -647,399 +647,482 @@ const Daylin = () => {
           </TabsList>
 
           <TabsContent value="status" className="space-y-6">
-            {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card>
+            {/* Resumo Principal */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="border-warning/50 bg-warning/5">
                 <CardContent className="p-4">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-warning" />
-                    <span className="text-sm text-muted-foreground">Não iniciaram</span>
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="h-5 w-5 text-warning" />
+                    <span className="text-sm font-medium text-warning">⚠️ Ainda não iniciaram</span>
                   </div>
-                  <p className="text-2xl font-bold text-warning">{sellersNotStarted.length}</p>
+                  <p className="text-3xl font-bold text-warning">{sellersNotStarted.length}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {sellersNotStarted.length === 0 ? "Todos iniciaram! 🎉" : "vendedores precisam iniciar"}
+                  </p>
                 </CardContent>
               </Card>
               
-              <Card>
+              <Card className="border-orange-500/50 bg-orange-500/5">
                 <CardContent className="p-4">
-                  <div className="flex items-center gap-2">
-                    <Sun className="h-4 w-4 text-orange-500" />
-                    <span className="text-sm text-muted-foreground">Em atividade</span>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="h-5 w-5 text-orange-500" />
+                    <span className="text-sm font-medium text-orange-500">🔄 Não encerraram</span>
                   </div>
-                  <p className="text-2xl font-bold text-orange-500">{sellersStarted.length}</p>
+                  <p className="text-3xl font-bold text-orange-500">{sellersStarted.length}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {sellersStarted.length === 0 ? "Todos finalizaram!" : "ainda trabalhando"}
+                  </p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="border-success/50 bg-success/5">
                 <CardContent className="p-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-success" />
-                    <span className="text-sm text-muted-foreground">Finalizaram</span>
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className="h-5 w-5 text-success" />
+                    <span className="text-sm font-medium text-success">✅ Finalizaram</span>
                   </div>
-                  <p className="text-2xl font-bold text-success">{sellersFinished.length}</p>
+                  <p className="text-3xl font-bold text-success">{sellersFinished.length}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    dia completo
+                  </p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="border-primary/50 bg-primary/5">
                 <CardContent className="p-4">
-                  <div className="flex items-center gap-2">
-                    <Target className="h-4 w-4 text-primary" />
-                    <span className="text-sm text-muted-foreground">Forecast Total</span>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target className="h-5 w-5 text-primary" />
+                    <span className="text-sm font-medium text-primary">🎯 Forecast Total</span>
                   </div>
-                  <p className="text-lg font-bold text-primary">
+                  <p className="text-xl font-bold text-primary">
                     R$ {totalForecast.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    previsão do dia
                   </p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Sellers Status */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Not Started */}
-              <Card className="card-shadow">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-warning" />
-                    Vendedores que não iniciaram ({sellersNotStarted.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {sellersNotStarted.length === 0 ? (
-                    <p className="text-muted-foreground">Todos os vendedores iniciaram o dia! 🎉</p>
-                  ) : (
-                    <div className="space-y-2">
+            {/* Alertas Importantes */}
+            <div className="space-y-4">
+              {/* Vendedores que não iniciaram */}
+              {sellersNotStarted.length > 0 && (
+                <Alert className="border-warning/50 bg-warning/10">
+                  <AlertTriangle className="h-4 w-4 text-warning" />
+                  <AlertDescription className="text-warning-foreground">
+                    <div className="flex items-center justify-between">
+                      <span>
+                        <strong>{sellersNotStarted.length} vendedor(es)</strong> ainda não iniciaram o Daylin hoje:
+                      </span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
                       {sellersNotStarted.map(seller => (
-                        <div key={seller.id} className="p-3 rounded-lg bg-warning/10 border border-warning/20">
-                          <p className="font-medium text-warning-foreground">{seller.name}</p>
-                        </div>
+                        <Badge key={seller.id} variant="outline" className="border-warning text-warning">
+                          {seller.name}
+                        </Badge>
                       ))}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </AlertDescription>
+                </Alert>
+              )}
 
-              {/* Started Today */}
+              {/* Vendedores que não encerraram (após 16h) */}
+              {new Date().getHours() >= 16 && sellersStarted.length > 0 && (
+                <Alert className="border-orange-500/50 bg-orange-500/10">
+                  <Clock className="h-4 w-4 text-orange-500" />
+                  <AlertDescription className="text-orange-900 dark:text-orange-100">
+                    <div className="flex items-center justify-between">
+                      <span>
+                        <strong>{sellersStarted.length} vendedor(es)</strong> ainda não encerraram o dia:
+                      </span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {sellersStarted.map(seller => (
+                        <Badge key={seller.id} variant="outline" className="border-orange-500 text-orange-600">
+                          {seller.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+
+            {/* Resultados do Dia */}
+            {sellersFinished.length > 0 && (
               <Card className="card-shadow">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Sun className="h-5 w-5 text-orange-500" />
-                    Resumo dos que iniciaram ({sellersStarted.length + sellersFinished.length})
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                    📊 Resultados do Dia
                   </CardTitle>
+                  <CardDescription>
+                    Índices consolidados dos vendedores que finalizaram
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="max-h-96 overflow-y-auto">
-                  {[...sellersStarted, ...sellersFinished].length === 0 ? (
-                    <p className="text-muted-foreground">Nenhum vendedor iniciou o dia ainda.</p>
-                  ) : (
-                     <div className="space-y-4">
-                       {[...sellersStarted, ...sellersFinished].map(seller => (
-                         <div key={seller.id} className="p-4 rounded-lg bg-muted/50 border">
-                           {editingReport === seller.user_id ? (
-                             <div className="space-y-4">
-                               <div className="flex items-center justify-between mb-4">
-                                 <h4 className="font-medium">Editando: {seller.name}</h4>
-                                 <div className="flex items-center gap-2">
-                                   <Button
-                                     size="sm"
-                                     onClick={() => {
-                                       if (seller.report_id) {
-                                         saveEditedReport(seller.report_id);
-                                       }
-                                     }}
-                                   >
-                                     <Save className="h-3 w-3 mr-1" />
-                                     Salvar
-                                   </Button>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div className="text-center p-4 rounded-lg bg-muted/30">
+                      <p className="text-2xl font-bold text-primary">
+                        R$ {sellersFinished.reduce((acc, s) => acc + (s.sales_amount || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Vendas Total</p>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-muted/30">
+                      <p className="text-2xl font-bold text-blue-600">
+                        {sellersFinished.reduce((acc, s) => acc + (s.sketchup_renewed || 0), 0)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">SketchUp Renovado</p>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-muted/30">
+                      <p className="text-2xl font-bold text-purple-600">
+                        {sellersFinished.reduce((acc, s) => acc + (s.chaos_renewed || 0), 0)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Chaos Renovado</p>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-muted/30">
+                      <p className="text-2xl font-bold text-green-600">
+                        {sellersFinished.reduce((acc, s) => acc + (s.cross_selling || 0), 0)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Cross Selling</p>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-muted/30">
+                      <p className="text-2xl font-bold text-indigo-600">
+                        {sellersFinished.reduce((acc, s) => acc + (s.onboarding || 0), 0)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Onboarding</p>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-muted/30">
+                      <p className="text-2xl font-bold text-amber-600">
+                        {sellersFinished.reduce((acc, s) => acc + (s.packs_vendidos || 0), 0)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Packs Vendidos</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Detalhes dos Vendedores */}
+            <Card className="card-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sun className="h-5 w-5 text-orange-500" />
+                  👥 Detalhes dos Vendedores ({sellersStarted.length + sellersFinished.length})
+                </CardTitle>
+                <CardDescription>
+                  Visualize e edite os dados dos vendedores que iniciaram o dia
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="max-h-96 overflow-y-auto">
+                {[...sellersStarted, ...sellersFinished].length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">Nenhum vendedor iniciou o dia ainda.</p>
+                ) : (
+                   <div className="space-y-4">
+                     {[...sellersStarted, ...sellersFinished].map(seller => (
+                       <div key={seller.id} className="p-4 rounded-lg bg-muted/50 border">
+                         {editingReport === seller.user_id ? (
+                           <div className="space-y-4">
+                             <div className="flex items-center justify-between mb-4">
+                               <h4 className="font-medium">Editando: {seller.name}</h4>
+                               <div className="flex items-center gap-2">
+                                 <Button
+                                   size="sm"
+                                   onClick={() => {
+                                     if (seller.report_id) {
+                                       saveEditedReport(seller.report_id);
+                                     }
+                                   }}
+                                 >
+                                   <Save className="h-3 w-3 mr-1" />
+                                   Salvar
+                                 </Button>
+                                 <Button
+                                   size="sm"
+                                   variant="outline"
+                                   onClick={() => {
+                                     setEditingReport(null);
+                                      setEditReportForm({
+                                        mood: "",
+                                        sketchup_to_renew: "",
+                                        chaos_to_renew: "",
+                                        forecast_amount: "",
+                                        daily_strategy: "",
+                                        difficulties: "",
+                                        sketchup_renewed: "",
+                                        chaos_renewed: "",
+                                        sales_amount: "",
+                                        cross_selling: "",
+                                        onboarding: "",
+                                        onboarding_details: "",
+                                        packs_vendidos: "",
+                                      });
+                                   }}
+                                 >
+                                   <X className="h-3 w-3" />
+                                 </Button>
+                               </div>
+                             </div>
+                             
+                             <div className="grid grid-cols-1 gap-4">
+                               <div className="space-y-2">
+                                 <Label htmlFor="edit_mood">Humor</Label>
+                                 <Textarea
+                                   id="edit_mood"
+                                   value={editReportForm.mood}
+                                   onChange={(e) => setEditReportForm({ ...editReportForm, mood: e.target.value })}
+                                   placeholder="Como o vendedor está se sentindo..."
+                                   rows={2}
+                                 />
+                               </div>
+
+                               <div className="grid grid-cols-2 gap-4">
+                                 <div className="space-y-2">
+                                   <Label htmlFor="edit_sketchup_to_renew">SketchUp (a renovar)</Label>
+                                   <Input
+                                     id="edit_sketchup_to_renew"
+                                     type="number"
+                                     min="0"
+                                     value={editReportForm.sketchup_to_renew}
+                                     onChange={(e) => setEditReportForm({ ...editReportForm, sketchup_to_renew: e.target.value })}
+                                     placeholder="0"
+                                   />
+                                 </div>
+                                 <div className="space-y-2">
+                                   <Label htmlFor="edit_chaos_to_renew">Chaos (a renovar)</Label>
+                                   <Input
+                                     id="edit_chaos_to_renew"
+                                     type="number"
+                                     min="0"
+                                     value={editReportForm.chaos_to_renew}
+                                     onChange={(e) => setEditReportForm({ ...editReportForm, chaos_to_renew: e.target.value })}
+                                     placeholder="0"
+                                   />
+                                 </div>
+                               </div>
+
+                               <div className="space-y-2">
+                                 <Label htmlFor="edit_forecast_amount">Forecast (R$)</Label>
+                                 <Input
+                                   id="edit_forecast_amount"
+                                   type="text"
+                                   value={editReportForm.forecast_amount}
+                                   onChange={(e) => setEditReportForm({ ...editReportForm, forecast_amount: e.target.value })}
+                                   placeholder="0,00 ou 0.00"
+                                 />
+                               </div>
+
+                               <div className="space-y-2">
+                                 <Label htmlFor="edit_daily_strategy">Estratégia do dia</Label>
+                                 <Textarea
+                                   id="edit_daily_strategy"
+                                   value={editReportForm.daily_strategy}
+                                   onChange={(e) => setEditReportForm({ ...editReportForm, daily_strategy: e.target.value })}
+                                   placeholder="Descreva a estratégia..."
+                                   rows={2}
+                                 />
+                               </div>
+
+                               {seller.ended_at && (
+                                 <>
+                                   <div className="space-y-2">
+                                     <Label htmlFor="edit_difficulties">Dificuldades</Label>
+                                     <Textarea
+                                       id="edit_difficulties"
+                                       value={editReportForm.difficulties}
+                                       onChange={(e) => setEditReportForm({ ...editReportForm, difficulties: e.target.value })}
+                                       placeholder="Principais dificuldades..."
+                                       rows={2}
+                                     />
+                                   </div>
+
+                                   <div className="grid grid-cols-2 gap-4">
+                                     <div className="space-y-2">
+                                       <Label htmlFor="edit_sketchup_renewed">SketchUp Renovado</Label>
+                                       <Input
+                                         id="edit_sketchup_renewed"
+                                         type="number"
+                                         min="0"
+                                         value={editReportForm.sketchup_renewed}
+                                         onChange={(e) => setEditReportForm({ ...editReportForm, sketchup_renewed: e.target.value })}
+                                         placeholder="0"
+                                       />
+                                     </div>
+                                     <div className="space-y-2">
+                                       <Label htmlFor="edit_chaos_renewed">Chaos Renovado</Label>
+                                       <Input
+                                         id="edit_chaos_renewed"
+                                         type="number"
+                                         min="0"
+                                         value={editReportForm.chaos_renewed}
+                                         onChange={(e) => setEditReportForm({ ...editReportForm, chaos_renewed: e.target.value })}
+                                         placeholder="0"
+                                       />
+                                     </div>
+                                   </div>
+
+                                   <div className="space-y-2">
+                                     <Label htmlFor="edit_sales_amount">Vendas (R$)</Label>
+                                     <Input
+                                       id="edit_sales_amount"
+                                       type="text"
+                                       value={editReportForm.sales_amount}
+                                       onChange={(e) => setEditReportForm({ ...editReportForm, sales_amount: e.target.value })}
+                                       placeholder="0,00 ou 0.00"
+                                     />
+                                   </div>
+
+                                   <div className="grid grid-cols-3 gap-4">
+                                     <div className="space-y-2">
+                                       <Label htmlFor="edit_cross_selling">Cross Selling</Label>
+                                       <Input
+                                         id="edit_cross_selling"
+                                         type="number"
+                                         min="0"
+                                         value={editReportForm.cross_selling}
+                                         onChange={(e) => setEditReportForm({ ...editReportForm, cross_selling: e.target.value })}
+                                         placeholder="0"
+                                       />
+                                     </div>
+                                     <div className="space-y-2">
+                                       <Label htmlFor="edit_onboarding">Onboarding</Label>
+                                       <Input
+                                         id="edit_onboarding"
+                                         type="number"
+                                         min="0"
+                                         value={editReportForm.onboarding}
+                                         onChange={(e) => setEditReportForm({ ...editReportForm, onboarding: e.target.value })}
+                                         placeholder="0"
+                                       />
+                                     </div>
+                                     <div className="space-y-2">
+                                       <Label htmlFor="edit_packs_vendidos">Packs Vendidos</Label>
+                                       <Input
+                                         id="edit_packs_vendidos"
+                                         type="number"
+                                         min="0"
+                                         value={editReportForm.packs_vendidos}
+                                         onChange={(e) => setEditReportForm({ ...editReportForm, packs_vendidos: e.target.value })}
+                                         placeholder="0"
+                                       />
+                                     </div>
+                                   </div>
+
+                                   <div className="space-y-2">
+                                     <Label htmlFor="edit_onboarding_details">Detalhes do Onboarding</Label>
+                                     <Textarea
+                                       id="edit_onboarding_details"
+                                       value={editReportForm.onboarding_details}
+                                       onChange={(e) => setEditReportForm({ ...editReportForm, onboarding_details: e.target.value })}
+                                       placeholder="Descreva os detalhes dos onboardings..."
+                                       rows={2}
+                                     />
+                                   </div>
+                                 </>
+                               )}
+                             </div>
+                           </div>
+                         ) : (
+                           <>
+                             <div className="flex items-center justify-between mb-2">
+                               <h4 className="font-medium">{seller.name}</h4>
+                               <div className="flex items-center gap-2">
+                                 {seller.report_id && (
                                    <Button
                                      size="sm"
                                      variant="outline"
                                      onClick={() => {
-                                       setEditingReport(null);
+                                       setEditingReport(seller.user_id);
                                         setEditReportForm({
-                                          mood: "",
-                                          sketchup_to_renew: "",
-                                          chaos_to_renew: "",
-                                          forecast_amount: "",
-                                          daily_strategy: "",
-                                          difficulties: "",
-                                          sketchup_renewed: "",
-                                          chaos_renewed: "",
-                                          sales_amount: "",
-                                          cross_selling: "",
-                                          onboarding: "",
-                                          onboarding_details: "",
-                                          packs_vendidos: "",
+                                          mood: seller.mood || "",
+                                          sketchup_to_renew: seller.sketchup_to_renew?.toString() || "",
+                                          chaos_to_renew: seller.chaos_to_renew?.toString() || "",
+                                          forecast_amount: formatDecimalForInput(seller.forecast_amount),
+                                          daily_strategy: seller.daily_strategy || "",
+                                          difficulties: seller.difficulties || "",
+                                          sketchup_renewed: seller.sketchup_renewed?.toString() || "",
+                                          chaos_renewed: seller.chaos_renewed?.toString() || "",
+                                          sales_amount: formatDecimalForInput(seller.sales_amount),
+                                          cross_selling: seller.cross_selling?.toString() || "",
+                                          onboarding: seller.onboarding?.toString() || "",
+                                          onboarding_details: seller.onboarding_details || "",
+                                          packs_vendidos: seller.packs_vendidos?.toString() || "",
                                         });
                                      }}
                                    >
-                                     <X className="h-3 w-3" />
+                                     <Edit className="h-3 w-3 mr-1" />
+                                     Editar
                                    </Button>
-                                 </div>
-                               </div>
-                               
-                               <div className="grid grid-cols-1 gap-4">
-                                 <div className="space-y-2">
-                                   <Label htmlFor="edit_mood">Humor</Label>
-                                   <Textarea
-                                     id="edit_mood"
-                                     value={editReportForm.mood}
-                                     onChange={(e) => setEditReportForm({ ...editReportForm, mood: e.target.value })}
-                                     placeholder="Como o vendedor está se sentindo..."
-                                     rows={2}
-                                   />
-                                 </div>
-
-                                 <div className="grid grid-cols-2 gap-4">
-                                   <div className="space-y-2">
-                                     <Label htmlFor="edit_sketchup_to_renew">SketchUp (a renovar)</Label>
-                                     <Input
-                                       id="edit_sketchup_to_renew"
-                                       type="number"
-                                       min="0"
-                                       value={editReportForm.sketchup_to_renew}
-                                       onChange={(e) => setEditReportForm({ ...editReportForm, sketchup_to_renew: e.target.value })}
-                                       placeholder="0"
-                                     />
-                                   </div>
-                                   <div className="space-y-2">
-                                     <Label htmlFor="edit_chaos_to_renew">Chaos (a renovar)</Label>
-                                     <Input
-                                       id="edit_chaos_to_renew"
-                                       type="number"
-                                       min="0"
-                                       value={editReportForm.chaos_to_renew}
-                                       onChange={(e) => setEditReportForm({ ...editReportForm, chaos_to_renew: e.target.value })}
-                                       placeholder="0"
-                                     />
-                                   </div>
-                                 </div>
-
-                                 <div className="space-y-2">
-                                   <Label htmlFor="edit_forecast_amount">Forecast (R$)</Label>
-                                   <Input
-                                     id="edit_forecast_amount"
-                                     type="text"
-                                     value={editReportForm.forecast_amount}
-                                     onChange={(e) => setEditReportForm({ ...editReportForm, forecast_amount: e.target.value })}
-                                     placeholder="0,00 ou 0.00"
-                                   />
-                                 </div>
-
-                                 <div className="space-y-2">
-                                   <Label htmlFor="edit_daily_strategy">Estratégia do dia</Label>
-                                   <Textarea
-                                     id="edit_daily_strategy"
-                                     value={editReportForm.daily_strategy}
-                                     onChange={(e) => setEditReportForm({ ...editReportForm, daily_strategy: e.target.value })}
-                                     placeholder="Estratégia do vendedor..."
-                                     rows={2}
-                                   />
-                                 </div>
-
-                                 {seller.ended_at && (
-                                   <>
-                                     <Separator />
-                                     <div className="space-y-4">
-                                       <h5 className="font-medium text-sm">Dados de Encerramento</h5>
-                                       
-                                       <div className="space-y-2">
-                                         <Label htmlFor="edit_difficulties">Dificuldades</Label>
-                                         <Textarea
-                                           id="edit_difficulties"
-                                           value={editReportForm.difficulties}
-                                           onChange={(e) => setEditReportForm({ ...editReportForm, difficulties: e.target.value })}
-                                           placeholder="Dificuldades do dia..."
-                                           rows={2}
-                                         />
-                                       </div>
-
-                                       <div className="grid grid-cols-2 gap-4">
-                                         <div className="space-y-2">
-                                           <Label htmlFor="edit_sketchup_renewed">SketchUp Renovado</Label>
-                                           <Input
-                                             id="edit_sketchup_renewed"
-                                             type="number"
-                                             min="0"
-                                             value={editReportForm.sketchup_renewed}
-                                             onChange={(e) => setEditReportForm({ ...editReportForm, sketchup_renewed: e.target.value })}
-                                             placeholder="0"
-                                           />
-                                         </div>
-                                         <div className="space-y-2">
-                                           <Label htmlFor="edit_chaos_renewed">Chaos Renovado</Label>
-                                           <Input
-                                             id="edit_chaos_renewed"
-                                             type="number"
-                                             min="0"
-                                             value={editReportForm.chaos_renewed}
-                                             onChange={(e) => setEditReportForm({ ...editReportForm, chaos_renewed: e.target.value })}
-                                             placeholder="0"
-                                           />
-                                         </div>
-                                       </div>
-
-                                       <div className="space-y-2">
-                                         <Label htmlFor="edit_sales_amount">Vendas (R$)</Label>
-                                         <Input
-                                           id="edit_sales_amount"
-                                           type="text"
-                                           value={editReportForm.sales_amount}
-                                           onChange={(e) => setEditReportForm({ ...editReportForm, sales_amount: e.target.value })}
-                                           placeholder="0,00 ou 0.00"
-                                         />
-                                       </div>
-
-                                       <div className="grid grid-cols-3 gap-4">
-                                         <div className="space-y-2">
-                                           <Label htmlFor="edit_cross_selling">Cross Selling</Label>
-                                           <Input
-                                             id="edit_cross_selling"
-                                             type="number"
-                                             min="0"
-                                             value={editReportForm.cross_selling}
-                                             onChange={(e) => setEditReportForm({ ...editReportForm, cross_selling: e.target.value })}
-                                             placeholder="0"
-                                           />
-                                         </div>
-                                         <div className="space-y-2">
-                                           <Label htmlFor="edit_onboarding">Onboarding</Label>
-                                           <Input
-                                             id="edit_onboarding"
-                                             type="number"
-                                             min="0"
-                                             value={editReportForm.onboarding}
-                                             onChange={(e) => setEditReportForm({ ...editReportForm, onboarding: e.target.value })}
-                                             placeholder="0"
-                                           />
-                                         </div>
-                                         <div className="space-y-2">
-                                           <Label htmlFor="edit_packs_vendidos">Packs Vendidos</Label>
-                                           <Input
-                                             id="edit_packs_vendidos"
-                                             type="number"
-                                             min="0"
-                                             value={editReportForm.packs_vendidos}
-                                             onChange={(e) => setEditReportForm({ ...editReportForm, packs_vendidos: e.target.value })}
-                                             placeholder="0"
-                                           />
-                                         </div>
-                                       </div>
-                                     </div>
-                                   </>
+                                 )}
+                                 {seller.ended_at ? (
+                                   <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
+                                     <CheckCircle className="w-3 h-3 mr-1" />
+                                     Finalizado
+                                   </Badge>
+                                 ) : (
+                                   <Badge variant="secondary" className="bg-orange-500/10 text-orange-500 border-orange-500/20">
+                                     <Sun className="w-3 h-3 mr-1" />
+                                     Ativo
+                                   </Badge>
                                  )}
                                </div>
                              </div>
-                           ) : (
-                             <>
-                               <div className="flex items-center justify-between mb-2">
-                                 <h4 className="font-medium">{seller.name}</h4>
-                                 <div className="flex items-center gap-2">
-                                   {seller.report_id && (
-                                     <Button
-                                       size="sm"
-                                       variant="outline"
-                                       onClick={() => {
-                                         setEditingReport(seller.user_id);
-                                          setEditReportForm({
-                                            mood: seller.mood || "",
-                                            sketchup_to_renew: seller.sketchup_to_renew?.toString() || "",
-                                            chaos_to_renew: seller.chaos_to_renew?.toString() || "",
-                                            forecast_amount: formatDecimalForInput(seller.forecast_amount),
-                                            daily_strategy: seller.daily_strategy || "",
-                                            difficulties: seller.difficulties || "",
-                                            sketchup_renewed: seller.sketchup_renewed?.toString() || "",
-                                            chaos_renewed: seller.chaos_renewed?.toString() || "",
-                                            sales_amount: formatDecimalForInput(seller.sales_amount),
-                                            cross_selling: seller.cross_selling?.toString() || "",
-                                            onboarding: seller.onboarding?.toString() || "",
-                                            onboarding_details: seller.onboarding_details || "",
-                                            packs_vendidos: seller.packs_vendidos?.toString() || "",
-                                          });
-                                       }}
-                                     >
-                                       <Edit className="h-3 w-3 mr-1" />
-                                       Editar
-                                     </Button>
-                                   )}
-                                   {seller.ended_at ? (
-                                     <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
-                                       <CheckCircle className="w-3 h-3 mr-1" />
-                                       Finalizado
-                                     </Badge>
-                                   ) : (
-                                     <Badge variant="secondary" className="bg-orange-500/10 text-orange-500 border-orange-500/20">
-                                       <Sun className="w-3 h-3 mr-1" />
-                                       Ativo
-                                     </Badge>
-                                   )}
-                                 </div>
+                             
+                             <div className="grid grid-cols-2 gap-4 text-sm">
+                               <div>
+                                 <span className="text-muted-foreground">Iniciou:</span>
+                                 <p>{seller.started_at ? new Date(seller.started_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
                                </div>
-                               
-                               <div className="grid grid-cols-2 gap-4 text-sm">
-                                 <div>
-                                   <span className="text-muted-foreground">Iniciou:</span>
-                                   <p>{seller.started_at ? new Date(seller.started_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
-                                 </div>
-                                 <div>
-                                   <span className="text-muted-foreground">Forecast:</span>
-                                   <p className="font-medium">R$ {(seller.forecast_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                 </div>
-                                 <div>
-                                   <span className="text-muted-foreground">SketchUp:</span>
-                                   <p>{seller.sketchup_to_renew || 0}</p>
-                                 </div>
-                                 <div>
-                                   <span className="text-muted-foreground">Chaos:</span>
-                                   <p>{seller.chaos_to_renew || 0}</p>
-                                 </div>
-                                 {seller.ended_at && (
-                                   <>
-                                     <div>
-                                       <span className="text-muted-foreground">Vendas:</span>
-                                       <p className="font-medium">R$ {(seller.sales_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                     </div>
-                                     <div>
-                                       <span className="text-muted-foreground">Packs Vendidos:</span>
-                                       <p>{seller.packs_vendidos || 0}</p>
-                                     </div>
-                                   </>
-                                 )}
+                               <div>
+                                 <span className="text-muted-foreground">Encerrou:</span>
+                                 <p>{seller.ended_at ? new Date(seller.ended_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
                                </div>
+                               <div>
+                                 <span className="text-muted-foreground">Forecast:</span>
+                                 <p>R$ {seller.forecast_amount?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}</p>
+                               </div>
+                               <div>
+                                 <span className="text-muted-foreground">Vendas:</span>
+                                 <p>R$ {seller.sales_amount?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}</p>
+                               </div>
+                             </div>
 
-                               {seller.mood && (
-                                 <div className="mt-3">
-                                   <span className="text-muted-foreground text-sm">Humor:</span>
-                                   <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.mood}</p>
-                                 </div>
-                               )}
+                             {seller.mood && (
+                               <div className="mt-3">
+                                 <span className="text-muted-foreground text-sm">Humor:</span>
+                                 <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.mood}</p>
+                               </div>
+                             )}
 
-                               {seller.daily_strategy && (
-                                 <div className="mt-3">
-                                   <span className="text-muted-foreground text-sm">Estratégia:</span>
-                                   <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.daily_strategy}</p>
-                                 </div>
-                               )}
+                             {seller.daily_strategy && (
+                               <div className="mt-3">
+                                 <span className="text-muted-foreground text-sm">Estratégia:</span>
+                                 <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.daily_strategy}</p>
+                               </div>
+                             )}
 
-                                {seller.ended_at && seller.difficulties && (
-                                  <div className="mt-3">
-                                    <span className="text-muted-foreground text-sm">Dificuldades:</span>
-                                    <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.difficulties}</p>
-                                  </div>
-                                )}
+                             {seller.ended_at && seller.difficulties && (
+                               <div className="mt-3">
+                                 <span className="text-muted-foreground text-sm">Dificuldades:</span>
+                                 <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.difficulties}</p>
+                               </div>
+                             )}
 
-                                {seller.ended_at && seller.onboarding_details && (
-                                  <div className="mt-3">
-                                    <span className="text-muted-foreground text-sm">Detalhes do Onboarding:</span>
-                                    <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.onboarding_details}</p>
-                                  </div>
-                                )}
-                             </>
-                           )}
-                         </div>
-                       ))}
-                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                             {seller.ended_at && seller.onboarding_details && (
+                               <div className="mt-3">
+                                 <span className="text-muted-foreground text-sm">Detalhes do Onboarding:</span>
+                                 <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.onboarding_details}</p>
+                               </div>
+                             )}
+                           </>
+                         )}
+                       </div>
+                     ))}
+                   </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="metas" className="space-y-6">
