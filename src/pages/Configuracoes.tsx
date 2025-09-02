@@ -128,7 +128,7 @@ const Configuracoes = () => {
         .from("profiles")
         .update({
           name: profileForm.name,
-          email: profileForm.email,
+          // Email não é mais atualizado - mantido apenas no estado para exibição
         })
         .eq("user_id", profile.user_id);
 
@@ -322,12 +322,12 @@ const Configuracoes = () => {
                   id="email"
                   type="email"
                   value={profileForm.email}
-                  onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                  placeholder="seu@email.com"
-                  required
+                  readOnly
+                  disabled
+                  className="bg-muted cursor-not-allowed"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Usado para login e notificações
+                  E-mail não pode ser alterado - usado para login e notificações
                 </p>
               </div>
 
