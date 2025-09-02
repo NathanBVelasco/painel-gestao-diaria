@@ -125,6 +125,14 @@ const Daylin = () => {
     }
   };
 
+  // Helper function to parse decimal values with comma or dot
+  const parseDecimalValue = (value: string): number => {
+    if (!value) return 0;
+    // Replace comma with dot for parsing
+    const normalizedValue = value.replace(',', '.');
+    return parseFloat(normalizedValue) || 0;
+  };
+
   const handleStartDay = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
@@ -139,7 +147,7 @@ const Daylin = () => {
         mood: startForm.mood,
         sketchup_to_renew: parseInt(startForm.sketchup_to_renew) || 0,
         chaos_to_renew: parseInt(startForm.chaos_to_renew) || 0,
-        forecast_amount: parseFloat(startForm.forecast_amount) || 0,
+        forecast_amount: parseDecimalValue(startForm.forecast_amount),
         daily_strategy: startForm.daily_strategy,
       };
 
@@ -198,7 +206,7 @@ const Daylin = () => {
         difficulties: endForm.difficulties,
         sketchup_renewed: parseInt(endForm.sketchup_renewed) || 0,
         chaos_renewed: parseInt(endForm.chaos_renewed) || 0,
-        sales_amount: parseFloat(endForm.sales_amount) || 0,
+        sales_amount: parseDecimalValue(endForm.sales_amount),
         cross_selling: parseInt(endForm.cross_selling) || 0,
         onboarding: parseInt(endForm.onboarding) || 0,
         packs_vendidos: parseInt(endForm.packs_vendidos) || 0,
@@ -393,12 +401,10 @@ const Daylin = () => {
                   <Label htmlFor="forecast_amount">Forecast (R$)</Label>
                   <Input
                     id="forecast_amount"
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    type="text"
                     value={startForm.forecast_amount}
                     onChange={(e) => setStartForm({ ...startForm, forecast_amount: e.target.value })}
-                    placeholder="0.00"
+                    placeholder="0,00 ou 0.00"
                   />
                 </div>
 
@@ -539,12 +545,10 @@ const Daylin = () => {
                   <Label htmlFor="sales_amount">Vendas hoje (R$)</Label>
                   <Input
                     id="sales_amount"
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    type="text"
                     value={endForm.sales_amount}
                     onChange={(e) => setEndForm({ ...endForm, sales_amount: e.target.value })}
-                    placeholder="0.00"
+                    placeholder="0,00 ou 0.00"
                   />
                 </div>
 
