@@ -18,8 +18,13 @@ import {
   CheckCircle,
   Clock,
   Star,
-  Target
+  Target,
+  TrendingUp,
+  UserCheck,
+  Package,
+  RefreshCcw
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -35,6 +40,9 @@ interface Prize {
   is_for_all: boolean;
   is_active: boolean;
   created_at: string;
+  criteria_type?: string;
+  criteria_target?: number;
+  criteria_period?: string;
   creator_name?: string;
   achievement?: {
     achieved_at: string;
@@ -64,6 +72,9 @@ const Premios = () => {
     deadline: "",
     is_for_all: true,
     target_users: [] as string[],
+    criteria_type: "",
+    criteria_target: 0,
+    criteria_period: "week",
   });
 
   useEffect(() => {
@@ -112,22 +123,39 @@ const Premios = () => {
 
         const creatorMap = new Map(creators?.map(c => [c.user_id, c.name]) || []);
 
-        const processedPrizes = prizesData?.map(prize => {
-          // Filter achievements for current user
-          const userAchievement = prize.prize_achievements?.find(
-            (ach: any) => ach.user_id === profile.user_id
-          );
+        // Calculate progress for prizes with criteria
+        const processedPrizes = await Promise.all(
+          (prizesData || []).map(async (prize) => {
+            // Filter achievements for current user
+            const userAchievement = prize.prize_achievements?.find(
+              (ach: any) => ach.user_id === profile.user_id
+            );
 
-          return {
-            ...prize,
-            creator_name: creatorMap.get(prize.created_by),
-            achievement: userAchievement ? {
-              achieved_at: userAchievement.achieved_at,
-              progress: userAchievement.progress,
-            } : undefined,
-            prize_achievements: undefined, // Remove the raw data
-          };
-        }) || [];
+            let calculatedProgress = userAchievement?.progress || 0;
+
+            // Calculate progress from daily reports if criteria is set
+            if (prize.criteria_type && prize.criteria_target) {
+              calculatedProgress = await calculatePrizeProgress(
+                prize.criteria_type,
+                prize.criteria_target,
+                prize.criteria_period || 'week',
+                prize.created_at,
+                prize.deadline,
+                profile.user_id
+              );
+            }
+
+            return {
+              ...prize,
+              creator_name: creatorMap.get(prize.created_by),
+              achievement: userAchievement || (calculatedProgress > 0) ? {
+                achieved_at: calculatedProgress >= 100 ? new Date().toISOString() : "",
+                progress: calculatedProgress,
+              } : undefined,
+              prize_achievements: undefined, // Remove the raw data
+            };
+          })
+        );
 
         // Filter prizes based on user permissions
         const filteredPrizes = processedPrizes.filter(prize => {
@@ -148,6 +176,62 @@ const Premios = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const calculatePrizeProgress = async (
+    criteriaType: string,
+    criteriaTarget: number,
+    criteriaPeriod: string,
+    prizeCreatedAt: string,
+    prizeDeadline: string,
+    userId: string
+  ): Promise<number> => {
+    try {
+      // Define date range based on criteria period
+      let startDate = new Date(prizeCreatedAt);
+      const endDate = new Date(Math.min(new Date().getTime(), new Date(prizeDeadline).getTime()));
+
+      if (criteriaPeriod === 'week') {
+        // Get start of current week
+        const now = new Date();
+        startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+      } else if (criteriaPeriod === 'month') {
+        // Get start of current month
+        const now = new Date();
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      } else if (criteriaPeriod === 'day') {
+        // Today only
+        startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
+      }
+
+      // Query daily reports in the period
+      const { data: reports, error } = await supabase
+        .from("daily_reports")
+        .select(criteriaType)
+        .eq("user_id", userId)
+        .gte("date", startDate.toISOString().split('T')[0])
+        .lte("date", endDate.toISOString().split('T')[0]);
+
+      if (error || !reports) {
+        console.error("Error fetching reports for progress:", error);
+        return 0;
+      }
+
+      // Sum the values for the criteria
+      const total = reports.reduce((sum: number, report: any) => {
+        const value = report[criteriaType];
+        return sum + (typeof value === 'number' ? value : 0);
+      }, 0);
+
+      // Calculate percentage
+      const progress = Math.min((total / criteriaTarget) * 100, 100);
+      return Math.round(progress);
+
+    } catch (error) {
+      console.error("Error calculating progress:", error);
+      return 0;
     }
   };
 
@@ -184,6 +268,9 @@ const Premios = () => {
         created_by: profile.user_id,
         is_for_all: newPrize.is_for_all,
         target_users: newPrize.is_for_all ? [] : newPrize.target_users,
+        criteria_type: newPrize.criteria_type || null,
+        criteria_target: newPrize.criteria_target || null,
+        criteria_period: newPrize.criteria_period || null,
         is_active: true,
       };
 
@@ -213,6 +300,9 @@ const Premios = () => {
         deadline: "",
         is_for_all: true,
         target_users: [],
+        criteria_type: "",
+        criteria_target: 0,
+        criteria_period: "week",
       });
 
       loadPrizes();
@@ -240,6 +330,37 @@ const Premios = () => {
         ...newPrize,
         target_users: newPrize.target_users.filter(id => id !== userId)
       });
+    }
+  };
+
+  const getCriteriaIcon = (criteriaType: string) => {
+    switch (criteriaType) {
+      case 'sales_amount':
+        return <TrendingUp className="h-3 w-3 text-primary" />;
+      case 'onboarding':
+        return <UserCheck className="h-3 w-3 text-primary" />;
+      case 'packs_vendidos':
+        return <Package className="h-3 w-3 text-primary" />;
+      case 'cross_selling':
+        return <Target className="h-3 w-3 text-primary" />;
+      case 'sketchup_renewed':
+      case 'chaos_renewed':
+        return <RefreshCcw className="h-3 w-3 text-primary" />;
+      default:
+        return null;
+    }
+  };
+
+  const getCriteriaPeriodLabel = (period: string) => {
+    switch (period) {
+      case 'day':
+        return 'diário';
+      case 'week':
+        return 'semanal';
+      case 'month':
+        return 'mensal';
+      default:
+        return period;
     }
   };
 
@@ -329,16 +450,119 @@ const Premios = () => {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="deadline">Prazo de Validade</Label>
-                  <Input
-                    id="deadline"
-                    type="date"
-                    value={newPrize.deadline}
-                    onChange={(e) => setNewPrize({ ...newPrize, deadline: e.target.value })}
-                    required
-                  />
-                </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="deadline">Prazo de Validade</Label>
+                   <Input
+                     id="deadline"
+                     type="date"
+                     value={newPrize.deadline}
+                     onChange={(e) => setNewPrize({ ...newPrize, deadline: e.target.value })}
+                     required
+                   />
+                 </div>
+
+                 {/* Criteria Section */}
+                 <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                   <Label className="text-sm font-medium">🎯 Critério de Performance (Opcional)</Label>
+                   <p className="text-xs text-muted-foreground">
+                     Vincule o prêmio a uma meta específica de performance
+                   </p>
+                   
+                   <div className="space-y-3">
+                     <div className="space-y-2">
+                       <Label htmlFor="criteria_type">Tipo de Meta</Label>
+                       <Select
+                         value={newPrize.criteria_type}
+                         onValueChange={(value) => setNewPrize({ ...newPrize, criteria_type: value })}
+                       >
+                         <SelectTrigger>
+                           <SelectValue placeholder="Selecione um tipo de meta" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           <SelectItem value="">Sem critério específico</SelectItem>
+                           <SelectItem value="sales_amount">
+                             <div className="flex items-center gap-2">
+                               <TrendingUp className="h-4 w-4" />
+                               Valor de Vendas (R$)
+                             </div>
+                           </SelectItem>
+                           <SelectItem value="onboarding">
+                             <div className="flex items-center gap-2">
+                               <UserCheck className="h-4 w-4" />
+                               Onboardings
+                             </div>
+                           </SelectItem>
+                           <SelectItem value="packs_vendidos">
+                             <div className="flex items-center gap-2">
+                               <Package className="h-4 w-4" />
+                               Packs Vendidos
+                             </div>
+                           </SelectItem>
+                           <SelectItem value="cross_selling">
+                             <div className="flex items-center gap-2">
+                               <Target className="h-4 w-4" />
+                               Cross Selling
+                             </div>
+                           </SelectItem>
+                           <SelectItem value="sketchup_renewed">
+                             <div className="flex items-center gap-2">
+                               <RefreshCcw className="h-4 w-4" />
+                               SketchUp Renovações
+                             </div>
+                           </SelectItem>
+                           <SelectItem value="chaos_renewed">
+                             <div className="flex items-center gap-2">
+                               <RefreshCcw className="h-4 w-4" />
+                               Chaos Renovações
+                             </div>
+                           </SelectItem>
+                         </SelectContent>
+                       </Select>
+                     </div>
+
+                     {newPrize.criteria_type && (
+                       <>
+                         <div className="grid grid-cols-2 gap-3">
+                           <div className="space-y-2">
+                             <Label htmlFor="criteria_target">Meta</Label>
+                             <Input
+                               id="criteria_target"
+                               type="number"
+                               min="0"
+                               step={newPrize.criteria_type === "sales_amount" ? "1000" : "1"}
+                               value={newPrize.criteria_target}
+                               onChange={(e) => setNewPrize({ 
+                                 ...newPrize, 
+                                 criteria_target: parseFloat(e.target.value) || 0
+                               })}
+                               placeholder={newPrize.criteria_type === "sales_amount" ? "110000" : "7"}
+                               required
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <Label htmlFor="criteria_period">Período</Label>
+                             <Select
+                               value={newPrize.criteria_period}
+                               onValueChange={(value) => setNewPrize({ ...newPrize, criteria_period: value })}
+                             >
+                               <SelectTrigger>
+                                 <SelectValue />
+                               </SelectTrigger>
+                               <SelectContent>
+                                 <SelectItem value="day">Diário</SelectItem>
+                                 <SelectItem value="week">Semanal</SelectItem>
+                                 <SelectItem value="month">Mensal</SelectItem>
+                               </SelectContent>
+                             </Select>
+                           </div>
+                         </div>
+                         <div className="text-xs text-muted-foreground bg-accent/20 p-2 rounded">
+                           💡 O progresso será calculado automaticamente baseado nos relatórios diários
+                         </div>
+                       </>
+                     )}
+                   </div>
+                 </div>
 
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
@@ -444,22 +668,35 @@ const Premios = () => {
                     </p>
 
                     <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Prêmio:</span>
-                        <span className="font-medium text-primary">{prize.value_or_bonus}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Prazo:</span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(prize.deadline).toLocaleDateString('pt-BR')}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Criado por:</span>
-                        <span>{prize.creator_name}</span>
-                      </div>
-                    </div>
+                       <div className="flex justify-between">
+                         <span className="text-muted-foreground">Prêmio:</span>
+                         <span className="font-medium text-primary">{prize.value_or_bonus}</span>
+                       </div>
+                       {prize.criteria_type && (
+                         <div className="flex justify-between">
+                           <span className="text-muted-foreground">Meta:</span>
+                           <span className="flex items-center gap-2">
+                             {getCriteriaIcon(prize.criteria_type)}
+                             <span>
+                               {prize.criteria_target?.toLocaleString('pt-BR')}
+                               {prize.criteria_type === 'sales_amount' ? ' R$' : ''}
+                               {' '}({getCriteriaPeriodLabel(prize.criteria_period || 'week')})
+                             </span>
+                           </span>
+                         </div>
+                       )}
+                       <div className="flex justify-between">
+                         <span className="text-muted-foreground">Prazo:</span>
+                         <span className="flex items-center gap-1">
+                           <Calendar className="h-3 w-3" />
+                           {new Date(prize.deadline).toLocaleDateString('pt-BR')}
+                         </span>
+                       </div>
+                       <div className="flex justify-between">
+                         <span className="text-muted-foreground">Criado por:</span>
+                         <span>{prize.creator_name}</span>
+                       </div>
+                     </div>
 
                     {prize.achievement && (
                       <div className="mt-3 pt-3 border-t">

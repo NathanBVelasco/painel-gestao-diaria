@@ -206,6 +206,9 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          criteria_period: string | null
+          criteria_target: number | null
+          criteria_type: string | null
           deadline: string | null
           description: string | null
           id: string
@@ -219,6 +222,9 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          criteria_period?: string | null
+          criteria_target?: number | null
+          criteria_type?: string | null
           deadline?: string | null
           description?: string | null
           id?: string
@@ -232,6 +238,9 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          criteria_period?: string | null
+          criteria_target?: number | null
+          criteria_type?: string | null
           deadline?: string | null
           description?: string | null
           id?: string
