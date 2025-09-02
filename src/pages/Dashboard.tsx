@@ -581,7 +581,7 @@ const Dashboard = () => {
                   dataKey="forecast" 
                   position="top" 
                   formatter={(value: number) => formatCurrency(value)}
-                  style={{ fontSize: '10px', fill: 'hsl(var(--muted-foreground))' }}
+                  style={{ fontSize: '12px', fill: 'hsl(var(--foreground))', fontWeight: '600' }}
                 />
               </Bar>
               <Bar dataKey="vendas" fill="hsl(var(--primary))" name="Vendas">
@@ -589,7 +589,7 @@ const Dashboard = () => {
                   dataKey="vendas" 
                   position="top" 
                   formatter={(value: number) => formatCurrency(value)}
-                  style={{ fontSize: '10px', fill: 'hsl(var(--muted-foreground))' }}
+                  style={{ fontSize: '12px', fill: 'hsl(var(--foreground))', fontWeight: '600' }}
                 />
               </Bar>
             </BarChart>
