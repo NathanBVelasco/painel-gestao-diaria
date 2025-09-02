@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, Bot, Lightbulb, Target, MessageSquare, FileText, Phone, Mail, Paperclip, Image, File, X } from "lucide-react";
+import { Send, Bot, Lightbulb, Target, MessageSquare, FileText, Phone, Mail, Paperclip, Image, File as FileIcon, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -447,7 +447,7 @@ Abraço,
                         {file.type.startsWith('image/') ? (
                           <Image className="h-4 w-4 text-blue-500" />
                         ) : (
-                          <File className="h-4 w-4 text-red-500" />
+                          <FileIcon className="h-4 w-4 text-red-500" />
                         )}
                         <span className="text-sm truncate max-w-[150px]">{file.name}</span>
                         <Button
