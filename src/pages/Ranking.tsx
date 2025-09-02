@@ -53,19 +53,39 @@ const Ranking = () => {
 
     setLoading(true);
     try {
-      // Get all profiles (if gestor) or just current user, excluding the specific gestor
-      let profilesQuery = supabase
-        .from("profiles")
-        .select("user_id, name, email")
-        .neq("email", "vendas19@totalcad.com.br");
+      // Get all profiles (if gestor) or just current user
+      // Use secure approach to exclude specific gestor without exposing emails
+      let profiles;
       
-      if (!isGestor) {
-        profilesQuery = profilesQuery.eq("user_id", profile.user_id);
+      if (isGestor) {
+        // For gestors, use the secure function that excludes the system user
+        try {
+          const { data, error } = await supabase.rpc('get_team_profiles_for_gestor');
+          if (error) throw error;
+          profiles = data;
+        } catch (error) {
+          console.error('Error fetching team profiles:', error);
+          // Fallback to regular query if function fails
+          const { data, error: fallbackError } = await supabase
+            .from("profiles")
+            .select("user_id, name")
+            .neq("user_id", profile.user_id); // Just exclude current user
+          
+          if (fallbackError) throw fallbackError;
+          profiles = data;
+        }
+      } else {
+        // For regular users, just get their own profile
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("user_id, name")
+          .eq("user_id", profile.user_id);
+        
+        if (error) throw error;
+        profiles = data;
       }
 
-      const { data: profiles, error: profilesError } = await profilesQuery;
-
-      if (profilesError) {
+      if (!profiles) {
         toast({
           title: "Erro",
           description: "Não foi possível carregar os perfis",

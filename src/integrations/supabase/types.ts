@@ -310,6 +310,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_team_profiles_for_gestor: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          name: string
+          role: Database["public"]["Enums"]["user_role"]
+          user_id: string
+        }[]
+      }
       is_gestor: {
         Args: { user_id: string }
         Returns: boolean
