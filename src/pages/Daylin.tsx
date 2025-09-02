@@ -381,6 +381,9 @@ const Daylin = () => {
   const saveEditedReport = async (reportId: string) => {
     if (!profile || !isGestor) return;
 
+    console.log("Salvando relatório editado:", reportId);
+    console.log("Dados do formulário:", editReportForm);
+
     try {
       const updateData = {
         mood: editReportForm.mood,
@@ -397,6 +400,8 @@ const Daylin = () => {
         packs_vendidos: parseInt(editReportForm.packs_vendidos) || 0,
       };
 
+      console.log("Dados para atualizar:", updateData);
+
       const { error } = await supabase
         .from("daily_reports")
         .update(updateData)
@@ -411,6 +416,8 @@ const Daylin = () => {
         });
         return;
       }
+
+      console.log("Relatório atualizado com sucesso");
 
       toast({
         title: "Alterações salvas!",
@@ -436,6 +443,11 @@ const Daylin = () => {
 
     } catch (error) {
       console.error("Error updating report:", error);
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro inesperado ao salvar",
+        variant: "destructive",
+      });
     }
   };
 
