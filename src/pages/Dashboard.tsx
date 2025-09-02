@@ -386,8 +386,8 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Daylin Alert */}
-      {showDaylinAlert && (
+      {/* Daylin Alert - only for sellers, not gestors */}
+      {showDaylinAlert && !isGestor && (
         <Alert className="border-warning/50 bg-warning/10">
           <AlertTriangle className="h-4 w-4 text-warning" />
           <AlertDescription className="text-warning-foreground">
