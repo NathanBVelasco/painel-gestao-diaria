@@ -91,19 +91,13 @@ export function AppSidebar() {
                          }`
                        }
                     >
-                      <span className="text-lg relative">
-                        {item.emoji}
-                        {item.name === "Prêmios" && activePrizesCount > 0 && (
-                          <span className={`absolute bg-red-500 text-white text-xs rounded-full min-w-5 h-5 flex items-center justify-center font-bold px-1 ${
-                            isCollapsed 
-                              ? "-top-2 -right-2 z-10" 
-                              : "-top-2 -right-3 z-10"
-                          }`}>
-                            {activePrizesCount > 99 ? '99+' : activePrizesCount}
-                          </span>
-                        )}
-                      </span>
-                      {!isCollapsed && <span>{item.name}</span>}
+                      <span className="text-lg">{item.emoji}</span>
+                      {!isCollapsed && <span className="flex-1">{item.name}</span>}
+                      {item.name === "Prêmios" && activePrizesCount > 0 && (
+                        <span className="bg-red-500 text-white text-xs rounded-full min-w-5 h-5 flex items-center justify-center font-bold px-1 ml-auto">
+                          {activePrizesCount > 99 ? '99+' : activePrizesCount}
+                        </span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
