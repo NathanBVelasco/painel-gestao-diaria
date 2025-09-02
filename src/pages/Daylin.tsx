@@ -446,11 +446,40 @@ const Daylin = () => {
     }
   };
 
-  // Helper function to parse decimal values with comma or dot
+  // Helper function to parse decimal values in Brazilian format
   const parseDecimalValue = (value: string): number => {
     if (!value) return 0;
-    // Replace comma with dot for parsing
-    const normalizedValue = value.replace(',', '.');
+    
+    // Remove any spaces
+    const cleanValue = value.replace(/\s/g, '');
+    
+    // If contains comma, treat as decimal separator (e.g., "1.500,50" or "1500,50")
+    if (cleanValue.includes(',')) {
+      // Remove dots as thousand separators and replace comma with dot
+      const normalizedValue = cleanValue.replace(/\./g, '').replace(',', '.');
+      return parseFloat(normalizedValue) || 0;
+    }
+    
+    // If contains dot followed by exactly 2 digits at the end, treat as decimal separator
+    if (/\.\d{2}$/.test(cleanValue)) {
+      // Remove dots except the last one (decimal separator)
+      const parts = cleanValue.split('.');
+      if (parts.length > 1) {
+        const integerPart = parts.slice(0, -1).join('');
+        const decimalPart = parts[parts.length - 1];
+        return parseFloat(`${integerPart}.${decimalPart}`) || 0;
+      }
+    }
+    
+    // If it's just numbers without decimal separators, treat as cents
+    // e.g., "445250" becomes 4452.50
+    if (/^\d+$/.test(cleanValue)) {
+      const numValue = parseInt(cleanValue);
+      return numValue / 100;
+    }
+    
+    // Fallback: remove dots and parse normally
+    const normalizedValue = cleanValue.replace(/\./g, '');
     return parseFloat(normalizedValue) || 0;
   };
 
