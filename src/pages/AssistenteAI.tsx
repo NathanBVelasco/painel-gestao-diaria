@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -376,13 +376,25 @@ Quando você teria uns 15 minutinhos? 😊`
               {/* Input */}
               <div className="border-t p-4">
                 <form onSubmit={handleSendMessage} className="flex gap-2">
-                  <Input
+                  <Textarea
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Digite sua pergunta sobre vendas..."
                     disabled={loading}
+                    className="min-h-[80px] max-h-[200px] resize-none"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(e);
+                      }
+                    }}
                   />
-                  <Button type="submit" disabled={loading || !message.trim()} className="brand-gradient">
+                  <Button 
+                    type="submit" 
+                    disabled={loading || !message.trim()} 
+                    className="brand-gradient self-end"
+                    size="icon"
+                  >
                     <Send className="h-4 w-4" />
                   </Button>
                 </form>
