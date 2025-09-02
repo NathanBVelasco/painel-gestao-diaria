@@ -62,8 +62,8 @@ export function AppSidebar() {
             </div>
             {!isCollapsed && (
               <div className="flex flex-col">
-                <h1 className="font-bold text-lg text-sidebar-foreground">SAAS FARMERS</h1>
-                <p className="text-xs text-sidebar-foreground/70">TotalCAD Softwares</p>
+                <h1 className="font-bold text-lg text-gray-900 dark:text-white">SAAS FARMERS</h1>
+                <p className="text-xs text-gray-600 dark:text-gray-400">TotalCAD Softwares</p>
               </div>
             )}
           </div>
@@ -71,7 +71,7 @@ export function AppSidebar() {
 
         {/* Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className={`${isCollapsed ? "sr-only" : ""} text-sidebar-foreground font-medium`}>
+          <SidebarGroupLabel className={`${isCollapsed ? "sr-only" : ""} text-gray-600 dark:text-gray-400 font-medium`}>
             Menu Principal
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -84,8 +84,8 @@ export function AppSidebar() {
                        className={({ isActive }) =>
                          `flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium ${
                            isActive
-                             ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                             : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                             ? "bg-primary text-white shadow-sm"
+                             : "text-gray-700 dark:text-gray-200 hover:bg-orange-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
                          }`
                        }
                     >
@@ -112,8 +112,8 @@ export function AppSidebar() {
                   </AvatarFallback>
                 </Avatar>
                  <div className="flex flex-col">
-                   <span className="text-sm font-medium text-sidebar-foreground">{profile.name}</span>
-                   <span className="text-xs text-sidebar-foreground/70 capitalize">
+                   <span className="text-sm font-medium text-gray-900 dark:text-white">{profile.name}</span>
+                   <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
                     {profile.role}
                   </span>
                 </div>
@@ -125,7 +125,7 @@ export function AppSidebar() {
             onClick={signOut}
             variant="ghost"
             size="sm"
-            className={`${isCollapsed ? "w-8 h-8 p-0" : "w-full justify-start"} text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent`}
+            className={`${isCollapsed ? "w-8 h-8 p-0" : "w-full justify-start"} text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800`}
           >
             <LogOut className="h-4 w-4" />
             {!isCollapsed && <span className="ml-2">Sair</span>}
