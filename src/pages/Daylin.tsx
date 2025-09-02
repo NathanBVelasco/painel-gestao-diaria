@@ -24,6 +24,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { useFormPersist } from "@/hooks/useFormPersist";
 
 interface DailyReport {
   id?: string;
@@ -119,25 +120,40 @@ const Daylin = () => {
     packs_vendidos: "",
   });
 
-  // Start day form state
-  const [startForm, setStartForm] = useState({
-    mood: "",
-    sketchup_to_renew: "",
-    chaos_to_renew: "",
-    forecast_amount: "",
-    daily_strategy: "",
+  // Start day form state with persistence
+  const {
+    formData: startForm,
+    updateField: updateStartField,
+    clearPersistedData: clearStartForm
+  } = useFormPersist({
+    key: 'daylin-start-form',
+    initialState: {
+      mood: "",
+      sketchup_to_renew: "",
+      chaos_to_renew: "",
+      forecast_amount: "",
+      daily_strategy: "",
+    }
   });
 
-  // End day form state
-  const [endForm, setEndForm] = useState({
-    difficulties: "",
-    sketchup_renewed: "",
-    chaos_renewed: "",
-    sales_amount: "",
-    cross_selling: "",
-    onboarding: "",
-    onboarding_details: "",
-    packs_vendidos: "",
+  // End day form state with persistence
+  const {
+    formData: endForm,
+    updateField: updateEndField,
+    setFormData: setEndForm,
+    clearPersistedData: clearEndForm
+  } = useFormPersist({
+    key: 'daylin-end-form',
+    initialState: {
+      difficulties: "",
+      sketchup_renewed: "",
+      chaos_renewed: "",
+      sales_amount: "",
+      cross_selling: "",
+      onboarding: "",
+      onboarding_details: "",
+      packs_vendidos: "",
+    }
   });
 
   useEffect(() => {
@@ -531,14 +547,8 @@ const Daylin = () => {
         description: "Bom trabalho! Seus indicadores estão ativos.",
       });
 
-      // Reset form
-      setStartForm({
-        mood: "",
-        sketchup_to_renew: "",
-        chaos_to_renew: "",
-        forecast_amount: "",
-        daily_strategy: "",
-      });
+      // Clear form data from localStorage
+      clearStartForm();
 
     } catch (error) {
       console.error("Error starting day:", error);
@@ -592,6 +602,9 @@ const Daylin = () => {
         title: "Dia encerrado com sucesso!",
         description: "Parabéns! Seus resultados foram registrados.",
       });
+
+      // Clear end form data from localStorage
+      clearEndForm();
 
     } catch (error) {
       console.error("Error ending day:", error);
@@ -1346,7 +1359,7 @@ const Daylin = () => {
                   <Textarea
                     id="mood"
                     value={startForm.mood}
-                    onChange={(e) => setStartForm({ ...startForm, mood: e.target.value })}
+                    onChange={(e) => updateStartField('mood', e.target.value)}
                     placeholder="Como você está se sentindo hoje? Descreva seu humor..."
                     rows={2}
                   />
@@ -1360,7 +1373,7 @@ const Daylin = () => {
                       type="number"
                       min="0"
                       value={startForm.sketchup_to_renew}
-                      onChange={(e) => setStartForm({ ...startForm, sketchup_to_renew: e.target.value })}
+                      onChange={(e) => updateStartField('sketchup_to_renew', e.target.value)}
                       placeholder="0"
                     />
                   </div>
@@ -1371,7 +1384,7 @@ const Daylin = () => {
                       type="number"
                       min="0"
                       value={startForm.chaos_to_renew}
-                      onChange={(e) => setStartForm({ ...startForm, chaos_to_renew: e.target.value })}
+                      onChange={(e) => updateStartField('chaos_to_renew', e.target.value)}
                       placeholder="0"
                     />
                   </div>
@@ -1383,7 +1396,7 @@ const Daylin = () => {
                     id="forecast_amount"
                     type="text"
                     value={startForm.forecast_amount}
-                    onChange={(e) => setStartForm({ ...startForm, forecast_amount: e.target.value })}
+                    onChange={(e) => updateStartField('forecast_amount', e.target.value)}
                     placeholder="0,00 ou 0.00"
                   />
                 </div>
@@ -1393,7 +1406,7 @@ const Daylin = () => {
                   <Textarea
                     id="daily_strategy"
                     value={startForm.daily_strategy}
-                    onChange={(e) => setStartForm({ ...startForm, daily_strategy: e.target.value })}
+                    onChange={(e) => updateStartField('daily_strategy', e.target.value)}
                     placeholder="Descreva sua estratégia para hoje..."
                     rows={3}
                   />
@@ -1499,7 +1512,7 @@ const Daylin = () => {
                   <Textarea
                     id="difficulties"
                     value={endForm.difficulties}
-                    onChange={(e) => setEndForm({ ...endForm, difficulties: e.target.value })}
+                    onChange={(e) => updateEndField('difficulties', e.target.value)}
                     placeholder="Descreva as principais dificuldades..."
                     rows={3}
                   />
@@ -1513,7 +1526,7 @@ const Daylin = () => {
                       type="number"
                       min="0"
                       value={endForm.sketchup_renewed}
-                      onChange={(e) => setEndForm({ ...endForm, sketchup_renewed: e.target.value })}
+                      onChange={(e) => updateEndField('sketchup_renewed', e.target.value)}
                       placeholder="0"
                     />
                   </div>
@@ -1524,7 +1537,7 @@ const Daylin = () => {
                       type="number"
                       min="0"
                       value={endForm.chaos_renewed}
-                      onChange={(e) => setEndForm({ ...endForm, chaos_renewed: e.target.value })}
+                      onChange={(e) => updateEndField('chaos_renewed', e.target.value)}
                       placeholder="0"
                     />
                   </div>
@@ -1536,7 +1549,7 @@ const Daylin = () => {
                     id="sales_amount"
                     type="text"
                     value={endForm.sales_amount}
-                    onChange={(e) => setEndForm({ ...endForm, sales_amount: e.target.value })}
+                    onChange={(e) => updateEndField('sales_amount', e.target.value)}
                     placeholder="0,00 ou 0.00"
                   />
                 </div>
@@ -1549,7 +1562,7 @@ const Daylin = () => {
                       type="number"
                       min="0"
                       value={endForm.cross_selling}
-                      onChange={(e) => setEndForm({ ...endForm, cross_selling: e.target.value })}
+                      onChange={(e) => updateEndField('cross_selling', e.target.value)}
                       placeholder="0"
                     />
                   </div>
@@ -1560,7 +1573,7 @@ const Daylin = () => {
                       type="number"
                       min="0"
                       value={endForm.onboarding}
-                      onChange={(e) => setEndForm({ ...endForm, onboarding: e.target.value })}
+                      onChange={(e) => updateEndField('onboarding', e.target.value)}
                       placeholder="0"
                     />
                   </div>
@@ -1573,7 +1586,7 @@ const Daylin = () => {
                     type="number"
                     min="0"
                     value={endForm.packs_vendidos}
-                    onChange={(e) => setEndForm({ ...endForm, packs_vendidos: e.target.value })}
+                    onChange={(e) => updateEndField('packs_vendidos', e.target.value)}
                     placeholder="0"
                   />
                 </div>
@@ -1583,7 +1596,7 @@ const Daylin = () => {
                   <Textarea
                     id="onboarding_details"
                     value={endForm.onboarding_details}
-                    onChange={(e) => setEndForm({ ...endForm, onboarding_details: e.target.value })}
+                    onChange={(e) => updateEndField('onboarding_details', e.target.value)}
                     placeholder="Descreva os detalhes dos onboardings realizados..."
                     rows={3}
                   />
