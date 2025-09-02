@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { message, attachments = [] } = await req.json();
+    const { message, attachments = [], chatTone = "amigavel" } = await req.json();
 
     if (!message && attachments.length === 0) {
       throw new Error('Mensagem ou anexos são obrigatórios');
@@ -23,6 +23,15 @@ serve(async (req) => {
     if (!geminiApiKey) {
       throw new Error('GEMINI_API_KEY não configurada');
     }
+
+    // Definir estilo de resposta baseado no tom escolhido
+    const toneInstructions = {
+      objetivo: "Seja DIRETO e CONCISO. Use frases curtas, vá direto ao ponto, sem rodeios. Máximo 3-4 linhas por resposta.",
+      explicativo: "Seja DETALHADO e EDUCATIVO. Explique o 'porquê' de cada estratégia, forneça contexto, exemplos práticos e fundamentos.",
+      amigavel: "Seja CALOROSO e PRÓXIMO. Use um tom amistoso, empático, como se fosse um colega experiente dando conselhos.",
+      simpatico: "Seja CARISMÁTICO e EMPÁTICO. Use humor sutil quando apropriado, demonstre entusiasmo e energia positiva.",
+      profissional: "Seja FORMAL e TÉCNICO. Use linguagem corporativa, dados específicos, métricas e argumentos estruturados."
+    };
 
     // Prompt especializado em vendas de SketchUp/TotalCAD
     let systemPrompt = `Você é um assistente especializado em vendas de software CAD, especificamente SketchUp, LayOut e produtos Trimble. 
@@ -48,13 +57,15 @@ OBJEÇÕES COMUNS:
 - "Não temos orçamento agora"
 - "Vamos avaliar outras opções"
 
-DIRETRIZES:
+TOM DE RESPOSTA ESCOLHIDO PELO USUÁRIO: ${toneInstructions[chatTone as keyof typeof toneInstructions] || toneInstructions.amigavel}
+
+DIRETRIZES GERAIS:
 - Use linguagem brasileira natural
 - Seja prático e focado em vendas
 - Ofereça scripts prontos quando apropriado
-- Mantenha tom consultivo mas assertivo
-- Inclua emojis moderadamente para engajamento
+- Inclua emojis moderadamente para engajamento (exceto no tom profissional)
 - Sempre termine com uma sugestão de próximo passo
+- Adapte sua resposta ao tom escolhido acima
 
 Responda sempre em português brasileiro com foco em vendas.`;
 

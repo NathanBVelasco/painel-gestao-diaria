@@ -5,7 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, Bot, Lightbulb, Target, MessageSquare, FileText, Phone, Mail, Paperclip, Image, File as FileIcon, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Send, Bot, Lightbulb, Target, MessageSquare, FileText, Phone, Mail, Paperclip, Image, File as FileIcon, X, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -37,8 +38,18 @@ const AssistenteAI = () => {
   const [loading, setLoading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [chatTone, setChatTone] = useState("amigavel");
+  const [loadingPreferences, setLoadingPreferences] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const toneOptions = [
+    { value: "objetivo", label: "Objetivo", description: "Direto ao ponto, respostas concisas" },
+    { value: "explicativo", label: "Explicativo", description: "Detalhado e educativo" },
+    { value: "amigavel", label: "Amigável", description: "Caloroso e próximo" },
+    { value: "simpatico", label: "Simpático", description: "Carismático e empático" },
+    { value: "profissional", label: "Profissional", description: "Formal e técnico" }
+  ];
 
   const loadConversations = async () => {
     try {
@@ -66,6 +77,65 @@ const AssistenteAI = () => {
       }
     } catch (error) {
       console.error('Erro ao carregar conversas:', error);
+    }
+  };
+
+  const loadChatPreferences = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('ai_chat_preferences')
+        .select('chat_tone')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erro ao carregar preferências:', error);
+        return;
+      }
+
+      if (data) {
+        setChatTone(data.chat_tone);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar preferências:', error);
+    }
+  };
+
+  const saveChatTone = async (tone: string) => {
+    setLoadingPreferences(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('ai_chat_preferences')
+        .upsert({
+          user_id: user.id,
+          chat_tone: tone
+        });
+
+      if (error) {
+        console.error('Erro ao salvar preferências:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível salvar suas preferências",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setChatTone(tone);
+      toast({
+        title: "Preferências salvas",
+        description: "Tom de resposta atualizado com sucesso"
+      });
+    } catch (error) {
+      console.error('Erro ao salvar preferências:', error);
+    } finally {
+      setLoadingPreferences(false);
     }
   };
 
@@ -270,7 +340,8 @@ const AssistenteAI = () => {
       const { data, error } = await supabase.functions.invoke('ai-chat-gemini', {
         body: { 
           message: userMessage,
-          attachments: attachments || []
+          attachments: attachments || [],
+          chatTone: chatTone
         }
       });
 
@@ -288,6 +359,7 @@ const AssistenteAI = () => {
 
   useEffect(() => {
     loadConversations();
+    loadChatPreferences();
   }, []);
 
   useEffect(() => {
@@ -385,13 +457,39 @@ Abraço,
         {/* Chat Area */}
         <Card className="lg:col-span-2 card-shadow">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bot className="h-5 w-5 text-primary" />
-              Chat de Vendas
-            </CardTitle>
-            <CardDescription>
-              Converse comigo sobre estratégias, objeções e técnicas de venda
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Bot className="h-5 w-5 text-primary" />
+                  Chat de Vendas
+                </CardTitle>
+                <CardDescription>
+                  Converse comigo sobre estratégias, objeções e técnicas de venda
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Settings className="h-4 w-4 text-muted-foreground" />
+                <Select 
+                  value={chatTone} 
+                  onValueChange={saveChatTone}
+                  disabled={loadingPreferences}
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {toneOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div>
+                          <div className="font-medium">{option.label}</div>
+                          <div className="text-xs text-muted-foreground">{option.description}</div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <div className="flex flex-col h-[500px]">
