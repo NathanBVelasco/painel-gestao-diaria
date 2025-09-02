@@ -13,7 +13,8 @@ import {
   XCircle, 
   Rocket, 
   RefreshCw,
-  AlertTriangle 
+  AlertTriangle,
+  Target 
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -59,14 +60,61 @@ const Dashboard = () => {
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [showDaylinAlert, setShowDaylinAlert] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  // Monthly target states (only for individual sellers)
+  const [monthlyTarget, setMonthlyTarget] = useState<{ target: number; progress: number; currentSales: number } | null>(null);
 
   useEffect(() => {
     checkDaylinStatus();
     loadDashboardData();
     if (isGestor) {
       loadSellers();
+    } else {
+      loadMonthlyTarget();
     }
   }, [period, product, selectedSeller, profile]);
+
+  const loadMonthlyTarget = async () => {
+    if (!profile || isGestor) return;
+
+    try {
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      const firstDayOfMonth = new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0];
+      const lastDayOfMonth = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
+
+      // Get current month target
+      const { data: target } = await supabase
+        .from("monthly_targets")
+        .select("target_amount")
+        .eq("user_id", profile.user_id)
+        .eq("month", currentMonth)
+        .eq("year", currentYear)
+        .maybeSingle();
+
+      // Get current month sales
+      const { data: monthSales } = await supabase
+        .from("daily_reports")
+        .select("sales_amount")
+        .eq("user_id", profile.user_id)
+        .gte("date", firstDayOfMonth)
+        .lte("date", lastDayOfMonth);
+
+      const currentSales = monthSales?.reduce((acc, sale) => acc + (sale.sales_amount || 0), 0) || 0;
+      const progress = target?.target_amount ? (currentSales / target.target_amount) * 100 : 0;
+
+      if (target?.target_amount) {
+        setMonthlyTarget({
+          target: target.target_amount,
+          currentSales,
+          progress: Math.min(progress, 100)
+        });
+      }
+
+    } catch (error) {
+      console.error("Error loading monthly target:", error);
+    }
+  };
 
   const loadSellers = async () => {
     try {
@@ -346,6 +394,47 @@ const Dashboard = () => {
             🚀 Bora começar o dia? Preencha o "Iniciar o Dia" para ativar seus indicadores.
           </AlertDescription>
         </Alert>
+      )}
+
+      {/* Monthly Target Card (only for sellers) */}
+      {!isGestor && monthlyTarget && (
+        <Card className="card-shadow border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" />
+              Meta Mensal - {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Meta:</span>
+              <span className="font-bold text-primary">
+                {formatCurrency(monthlyTarget.target)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Vendas atuais:</span>
+              <span className="font-bold">
+                {formatCurrency(monthlyTarget.currentSales)}
+              </span>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Progresso:</span>
+                <span className={`font-bold ${
+                  monthlyTarget.progress >= 100 ? 'text-success' : 
+                  monthlyTarget.progress >= 70 ? 'text-orange-500' : 'text-muted-foreground'
+                }`}>
+                  {monthlyTarget.progress.toFixed(1)}%
+                </span>
+              </div>
+              <Progress 
+                value={monthlyTarget.progress} 
+                className="h-3"
+              />
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* KPI Cards */}

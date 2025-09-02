@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Sun, 
   Moon, 
@@ -15,7 +16,10 @@ import {
   TrendingUp, 
   AlertTriangle,
   CheckCircle,
-  Clock 
+  Clock,
+  Edit,
+  Save,
+  X 
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -53,6 +57,24 @@ interface SellerDaylinStatus {
   daily_strategy?: string;
 }
 
+interface MonthlyTarget {
+  id?: string;
+  user_id: string;
+  month: number;
+  year: number;
+  target_amount: number;
+  created_by: string;
+}
+
+interface SellerWithTarget {
+  id: string;
+  name: string;
+  user_id: string;
+  target?: MonthlyTarget;
+  currentSales: number;
+  progress: number;
+}
+
 const Daylin = () => {
   const { profile, isGestor } = useAuth();
   const [todayReport, setTodayReport] = useState<DailyReport | null>(null);
@@ -63,6 +85,11 @@ const Daylin = () => {
   // Gestor states
   const [sellersStatus, setSellersStatus] = useState<SellerDaylinStatus[]>([]);
   const [gestorLoading, setGestorLoading] = useState(false);
+  
+  // Targets states for gestor
+  const [sellersWithTargets, setSellersWithTargets] = useState<SellerWithTarget[]>([]);
+  const [editingTarget, setEditingTarget] = useState<string | null>(null);
+  const [targetForm, setTargetForm] = useState({ amount: "" });
 
   // Start day form state
   const [startForm, setStartForm] = useState({
@@ -88,6 +115,7 @@ const Daylin = () => {
     if (isGestor) {
       setLoading(false); // Set loading false for gestor immediately
       loadSellersStatus();
+      loadSellersWithTargets();
     } else {
       loadTodayReport();
       checkEndDayAlert();
@@ -202,6 +230,118 @@ const Daylin = () => {
       console.error("Error loading sellers status:", error);
     } finally {
       setGestorLoading(false);
+    }
+  };
+
+  const loadSellersWithTargets = async () => {
+    if (!profile || !isGestor) return;
+
+    try {
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      const firstDayOfMonth = new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0];
+      const lastDayOfMonth = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
+      
+      // Get all sellers
+      const { data: sellers, error: sellersError } = await supabase
+        .from("profiles")
+        .select("id, name, user_id")
+        .eq("role", "vendedor");
+
+      if (sellersError) {
+        console.error("Error loading sellers:", sellersError);
+        return;
+      }
+
+      // Get current month targets
+      const { data: targets, error: targetsError } = await supabase
+        .from("monthly_targets")
+        .select("*")
+        .eq("month", currentMonth)
+        .eq("year", currentYear);
+
+      if (targetsError) {
+        console.error("Error loading targets:", targetsError);
+        return;
+      }
+
+      // Get sales for current month
+      const { data: monthSales, error: salesError } = await supabase
+        .from("daily_reports")
+        .select("user_id, sales_amount")
+        .gte("date", firstDayOfMonth)
+        .lte("date", lastDayOfMonth)
+        .not("sales_amount", "is", null);
+
+      if (salesError) {
+        console.error("Error loading month sales:", salesError);
+        return;
+      }
+
+      // Combine data
+      const sellersWithTargets: SellerWithTarget[] = sellers?.map(seller => {
+        const target = targets?.find(t => t.user_id === seller.user_id);
+        const sellerSales = monthSales?.filter(s => s.user_id === seller.user_id) || [];
+        const currentSales = sellerSales.reduce((acc, sale) => acc + (sale.sales_amount || 0), 0);
+        const progress = target?.target_amount ? (currentSales / target.target_amount) * 100 : 0;
+
+        return {
+          id: seller.id,
+          name: seller.name,
+          user_id: seller.user_id,
+          target,
+          currentSales,
+          progress: Math.min(progress, 100)
+        };
+      }) || [];
+
+      setSellersWithTargets(sellersWithTargets);
+
+    } catch (error) {
+      console.error("Error loading sellers with targets:", error);
+    }
+  };
+
+  const saveTarget = async (sellerId: string, amount: number) => {
+    if (!profile || !isGestor) return;
+
+    try {
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+
+      const { error } = await supabase
+        .from("monthly_targets")
+        .upsert({
+          user_id: sellerId,
+          month: currentMonth,
+          year: currentYear,
+          target_amount: amount,
+          created_by: profile.user_id
+        }, {
+          onConflict: "user_id,month,year"
+        });
+
+      if (error) {
+        console.error("Error saving target:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível salvar a meta",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Meta salva!",
+        description: "A meta foi definida com sucesso.",
+      });
+
+      loadSellersWithTargets();
+      setEditingTarget(null);
+      setTargetForm({ amount: "" });
+
+    } catch (error) {
+      console.error("Error saving target:", error);
     }
   };
 
@@ -355,6 +495,7 @@ const Daylin = () => {
     const sellersStarted = sellersStatus.filter(s => s.started_at && !s.ended_at);
     const sellersFinished = sellersStatus.filter(s => s.ended_at);
     const totalForecast = sellersStatus.reduce((acc, s) => acc + (s.forecast_amount || 0), 0);
+    const currentMonth = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
     return (
       <div className="space-y-6 animate-fade-in">
@@ -364,151 +505,272 @@ const Daylin = () => {
             📊 Daylin - Painel Gerencial
           </h1>
           <p className="text-muted-foreground">
-            Acompanhe o status dos vendedores e suas metas do dia
+            Acompanhe o status dos vendedores e suas metas
           </p>
         </div>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-warning" />
-                <span className="text-sm text-muted-foreground">Não iniciaram</span>
-              </div>
-              <p className="text-2xl font-bold text-warning">{sellersNotStarted.length}</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <Sun className="h-4 w-4 text-orange-500" />
-                <span className="text-sm text-muted-foreground">Em atividade</span>
-              </div>
-              <p className="text-2xl font-bold text-orange-500">{sellersStarted.length}</p>
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="status" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="status">Status Diário</TabsTrigger>
+            <TabsTrigger value="metas">Metas Mensais</TabsTrigger>
+          </TabsList>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-success" />
-                <span className="text-sm text-muted-foreground">Finalizaram</span>
-              </div>
-              <p className="text-2xl font-bold text-success">{sellersFinished.length}</p>
-            </CardContent>
-          </Card>
+          <TabsContent value="status" className="space-y-6">
+            {/* Statistics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-warning" />
+                    <span className="text-sm text-muted-foreground">Não iniciaram</span>
+                  </div>
+                  <p className="text-2xl font-bold text-warning">{sellersNotStarted.length}</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2">
+                    <Sun className="h-4 w-4 text-orange-500" />
+                    <span className="text-sm text-muted-foreground">Em atividade</span>
+                  </div>
+                  <p className="text-2xl font-bold text-orange-500">{sellersStarted.length}</p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-primary" />
-                <span className="text-sm text-muted-foreground">Forecast Total</span>
-              </div>
-              <p className="text-lg font-bold text-primary">
-                R$ {totalForecast.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-success" />
+                    <span className="text-sm text-muted-foreground">Finalizaram</span>
+                  </div>
+                  <p className="text-2xl font-bold text-success">{sellersFinished.length}</p>
+                </CardContent>
+              </Card>
 
-        {/* Sellers Status */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Not Started */}
-          <Card className="card-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-warning" />
-                Vendedores que não iniciaram ({sellersNotStarted.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {sellersNotStarted.length === 0 ? (
-                <p className="text-muted-foreground">Todos os vendedores iniciaram o dia! 🎉</p>
-              ) : (
-                <div className="space-y-2">
-                  {sellersNotStarted.map(seller => (
-                    <div key={seller.id} className="p-3 rounded-lg bg-warning/10 border border-warning/20">
-                      <p className="font-medium text-warning-foreground">{seller.name}</p>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Forecast Total</span>
+                  </div>
+                  <p className="text-lg font-bold text-primary">
+                    R$ {totalForecast.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Sellers Status */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Not Started */}
+              <Card className="card-shadow">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-warning" />
+                    Vendedores que não iniciaram ({sellersNotStarted.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {sellersNotStarted.length === 0 ? (
+                    <p className="text-muted-foreground">Todos os vendedores iniciaram o dia! 🎉</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {sellersNotStarted.map(seller => (
+                        <div key={seller.id} className="p-3 rounded-lg bg-warning/10 border border-warning/20">
+                          <p className="font-medium text-warning-foreground">{seller.name}</p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  )}
+                </CardContent>
+              </Card>
 
-          {/* Started Today */}
-          <Card className="card-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sun className="h-5 w-5 text-orange-500" />
-                Resumo dos que iniciaram ({sellersStarted.length + sellersFinished.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="max-h-96 overflow-y-auto">
-              {[...sellersStarted, ...sellersFinished].length === 0 ? (
-                <p className="text-muted-foreground">Nenhum vendedor iniciou o dia ainda.</p>
-              ) : (
+              {/* Started Today */}
+              <Card className="card-shadow">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sun className="h-5 w-5 text-orange-500" />
+                    Resumo dos que iniciaram ({sellersStarted.length + sellersFinished.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="max-h-96 overflow-y-auto">
+                  {[...sellersStarted, ...sellersFinished].length === 0 ? (
+                    <p className="text-muted-foreground">Nenhum vendedor iniciou o dia ainda.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {[...sellersStarted, ...sellersFinished].map(seller => (
+                        <div key={seller.id} className="p-4 rounded-lg bg-muted/50 border">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium">{seller.name}</h4>
+                            <div className="flex items-center gap-2">
+                              {seller.ended_at ? (
+                                <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Finalizado
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="bg-orange-500/10 text-orange-500 border-orange-500/20">
+                                  <Sun className="w-3 h-3 mr-1" />
+                                  Ativo
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-muted-foreground">Iniciou:</span>
+                              <p>{seller.started_at ? new Date(seller.started_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Forecast:</span>
+                              <p className="font-medium">R$ {(seller.forecast_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">SketchUp:</span>
+                              <p>{seller.sketchup_to_renew || 0}</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Chaos:</span>
+                              <p>{seller.chaos_to_renew || 0}</p>
+                            </div>
+                          </div>
+
+                          {seller.mood && (
+                            <div className="mt-3">
+                              <span className="text-muted-foreground text-sm">Humor:</span>
+                              <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.mood}</p>
+                            </div>
+                          )}
+
+                          {seller.daily_strategy && (
+                            <div className="mt-3">
+                              <span className="text-muted-foreground text-sm">Estratégia:</span>
+                              <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.daily_strategy}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="metas" className="space-y-6">
+            <Card className="card-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-primary" />
+                  Metas Mensais - {currentMonth}
+                </CardTitle>
+                <CardDescription>
+                  Defina e acompanhe as metas individuais dos vendedores
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
                 <div className="space-y-4">
-                  {[...sellersStarted, ...sellersFinished].map(seller => (
-                    <div key={seller.id} className="p-4 rounded-lg bg-muted/50 border">
-                      <div className="flex items-center justify-between mb-2">
+                  {sellersWithTargets.map(seller => (
+                    <div key={seller.id} className="p-4 rounded-lg border bg-card">
+                      <div className="flex items-center justify-between mb-3">
                         <h4 className="font-medium">{seller.name}</h4>
                         <div className="flex items-center gap-2">
-                          {seller.ended_at ? (
-                            <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Finalizado
-                            </Badge>
+                          {editingTarget === seller.user_id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="text"
+                                value={targetForm.amount}
+                                onChange={(e) => setTargetForm({ amount: e.target.value })}
+                                placeholder="Meta (ex: 15.000,00)"
+                                className="w-32"
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  const amount = parseDecimalValue(targetForm.amount);
+                                  if (amount > 0) {
+                                    saveTarget(seller.user_id, amount);
+                                  }
+                                }}
+                                disabled={!targetForm.amount}
+                              >
+                                <Save className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditingTarget(null);
+                                  setTargetForm({ amount: "" });
+                                }}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
                           ) : (
-                            <Badge variant="secondary" className="bg-orange-500/10 text-orange-500 border-orange-500/20">
-                              <Sun className="w-3 h-3 mr-1" />
-                              Ativo
-                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingTarget(seller.user_id);
+                                setTargetForm({ 
+                                  amount: seller.target?.target_amount?.toString() || "" 
+                                });
+                              }}
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              {seller.target ? "Editar" : "Definir"}
+                            </Button>
                           )}
                         </div>
                       </div>
-                      
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Iniciou:</span>
-                          <p>{seller.started_at ? new Date(seller.started_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Forecast:</span>
-                          <p className="font-medium">R$ {(seller.forecast_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">SketchUp:</span>
-                          <p>{seller.sketchup_to_renew || 0}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Chaos:</span>
-                          <p>{seller.chaos_to_renew || 0}</p>
-                        </div>
-                      </div>
 
-                      {seller.mood && (
-                        <div className="mt-3">
-                          <span className="text-muted-foreground text-sm">Humor:</span>
-                          <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.mood}</p>
+                      {seller.target ? (
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Meta do mês:</span>
+                            <span className="font-medium">
+                              R$ {seller.target.target_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Vendas atuais:</span>
+                            <span className="font-medium">
+                              R$ {seller.currentSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">Progresso:</span>
+                              <span className={`font-medium ${seller.progress >= 100 ? 'text-success' : seller.progress >= 70 ? 'text-orange-500' : 'text-muted-foreground'}`}>
+                                {seller.progress.toFixed(1)}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-muted rounded-full h-2">
+                              <div 
+                                className={`h-2 rounded-full transition-all ${
+                                  seller.progress >= 100 ? 'bg-success' : 
+                                  seller.progress >= 70 ? 'bg-orange-500' : 'bg-primary'
+                                }`}
+                                style={{ width: `${Math.min(seller.progress, 100)}%` }}
+                              />
+                            </div>
+                          </div>
                         </div>
-                      )}
-
-                      {seller.daily_strategy && (
-                        <div className="mt-3">
-                          <span className="text-muted-foreground text-sm">Estratégia:</span>
-                          <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.daily_strategy}</p>
-                        </div>
+                      ) : (
+                        <p className="text-muted-foreground text-sm">
+                          Nenhuma meta definida para este mês
+                        </p>
                       )}
                     </div>
                   ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     );
   }

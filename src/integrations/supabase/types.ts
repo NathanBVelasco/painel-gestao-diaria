@@ -104,6 +104,39 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_targets: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          month: number
+          target_amount: number
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          month: number
+          target_amount?: number
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          month?: number
+          target_amount?: number
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       prize_achievements: {
         Row: {
           achieved_at: string
