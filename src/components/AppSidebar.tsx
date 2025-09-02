@@ -9,6 +9,7 @@ import {
   LogOut,
   Building,
 } from "lucide-react";
+import { useActivePrizesCount } from "@/hooks/useActivePrizesCount";
 import {
   Sidebar,
   SidebarContent,
@@ -39,6 +40,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { profile, signOut } = useAuth();
   const isCollapsed = state === "collapsed";
+  const activePrizesCount = useActivePrizesCount();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -82,7 +84,7 @@ export function AppSidebar() {
                      <NavLink
                        to={item.href}
                        className={({ isActive }) =>
-                         `flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium ${
+                         `flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium relative ${
                            isActive
                              ? "bg-primary text-black shadow-sm"
                              : "text-gray-900 dark:text-gray-100 hover:bg-orange-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
@@ -91,6 +93,11 @@ export function AppSidebar() {
                     >
                       <span className="text-lg">{item.emoji}</span>
                       {!isCollapsed && <span>{item.name}</span>}
+                      {item.name === "Prêmios" && activePrizesCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                          {activePrizesCount}
+                        </span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
