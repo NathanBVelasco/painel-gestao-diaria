@@ -449,42 +449,25 @@ const Daylin = () => {
   // Helper function to format decimal values for display in inputs
   const formatDecimalForInput = (value: number | undefined): string => {
     if (!value || value === 0) return "";
-    // Convert to string with 2 decimal places and use comma as decimal separator
-    return value.toLocaleString('pt-BR', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
-    });
+    // Simply return the number as string without formatting
+    return value.toString();
   };
 
-  // Helper function to parse decimal values in Brazilian format
+  // Helper function to parse decimal values - simplified version
   const parseDecimalValue = (value: string): number => {
     if (!value) return 0;
     
     // Remove any spaces
-    const cleanValue = value.replace(/\s/g, '');
+    let cleanValue = value.replace(/\s/g, '');
     
-    // If contains comma, treat as decimal separator (e.g., "1.500,50" or "1500,50")
+    // If has comma as decimal separator (e.g. "44525,50")
     if (cleanValue.includes(',')) {
-      // Remove dots as thousand separators and replace comma with dot
-      const normalizedValue = cleanValue.replace(/\./g, '').replace(',', '.');
-      return parseFloat(normalizedValue) || 0;
+      cleanValue = cleanValue.replace(',', '.');
     }
     
-    // If contains dot followed by exactly 2 digits at the end, treat as decimal separator
-    if (/\.\d{2}$/.test(cleanValue)) {
-      // Remove dots except the last one (decimal separator)
-      const parts = cleanValue.split('.');
-      if (parts.length > 1) {
-        const integerPart = parts.slice(0, -1).join('');
-        const decimalPart = parts[parts.length - 1];
-        return parseFloat(`${integerPart}.${decimalPart}`) || 0;
-      }
-    }
-    
-    // For simple numbers like "44525", treat as the actual value (not cents)
-    // This means "44525" = R$ 44.525,00
-    const normalizedValue = cleanValue.replace(/\D/g, ''); // Remove any non-digits
-    return parseFloat(normalizedValue) || 0;
+    // Parse as float
+    const result = parseFloat(cleanValue);
+    return isNaN(result) ? 0 : result;
   };
 
   const handleStartDay = async (e: React.FormEvent) => {
