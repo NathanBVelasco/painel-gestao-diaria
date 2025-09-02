@@ -261,30 +261,7 @@ export type Database = {
       }
     }
     Views: {
-      team_members: {
-        Row: {
-          created_at: string | null
-          id: string | null
-          name: string | null
-          role: Database["public"]["Enums"]["user_role"] | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string | null
-          name?: string | null
-          role?: Database["public"]["Enums"]["user_role"] | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string | null
-          name?: string | null
-          role?: Database["public"]["Enums"]["user_role"] | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       get_current_user_role: {
