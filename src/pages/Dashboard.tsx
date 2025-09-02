@@ -398,40 +398,56 @@ const Dashboard = () => {
 
       {/* Monthly Target Card (only for sellers) */}
       {!isGestor && monthlyTarget && (
-        <Card className="card-shadow border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-primary" />
-              Meta Mensal - {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+        <Card className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-accent/5 border-2 border-primary/20 shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-50" />
+          <CardHeader className="relative">
+            <CardTitle className="flex items-center gap-3 text-lg">
+              <div className="p-2 rounded-full bg-primary/10">
+                <Target className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <div className="font-bold text-primary">Meta Mensal</div>
+                <div className="text-sm text-muted-foreground font-normal">
+                  {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                </div>
+              </div>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Meta:</span>
-              <span className="font-bold text-primary">
-                {formatCurrency(monthlyTarget.target)}
-              </span>
+          <CardContent className="relative space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1 p-3 rounded-lg bg-background/50 border border-border/50">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Meta</span>
+                <div className="font-bold text-lg text-primary">
+                  {formatCurrency(monthlyTarget.target)}
+                </div>
+              </div>
+              <div className="space-y-1 p-3 rounded-lg bg-background/50 border border-border/50">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Vendas atuais</span>
+                <div className="font-bold text-lg">
+                  {formatCurrency(monthlyTarget.currentSales)}
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Vendas atuais:</span>
-              <span className="font-bold">
-                {formatCurrency(monthlyTarget.currentSales)}
-              </span>
-            </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Progresso:</span>
-                <span className={`font-bold ${
-                  monthlyTarget.progress >= 100 ? 'text-success' : 
-                  monthlyTarget.progress >= 70 ? 'text-orange-500' : 'text-muted-foreground'
-                }`}>
-                  {monthlyTarget.progress.toFixed(1)}%
-                </span>
+                <span className="text-sm font-medium text-muted-foreground">Progresso da Meta</span>
+                <div className="flex items-center gap-2">
+                  <span className={`font-bold text-lg ${
+                    monthlyTarget.progress >= 100 ? 'text-success' : 
+                    monthlyTarget.progress >= 70 ? 'text-orange-500' : 'text-muted-foreground'
+                  }`}>
+                    {monthlyTarget.progress.toFixed(1)}%
+                  </span>
+                  {monthlyTarget.progress >= 100 && <span className="text-success">🎉</span>}
+                </div>
               </div>
               <Progress 
                 value={monthlyTarget.progress} 
-                className="h-3"
+                className="h-4 bg-muted/50"
               />
+              <div className="text-xs text-muted-foreground text-center">
+                Faltam {formatCurrency(Math.max(0, monthlyTarget.target - monthlyTarget.currentSales))} para atingir a meta
+              </div>
             </div>
           </CardContent>
         </Card>
