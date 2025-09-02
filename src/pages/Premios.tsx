@@ -22,7 +22,8 @@ import {
   TrendingUp,
   UserCheck,
   Package,
-  RefreshCcw
+  RefreshCcw,
+  Edit3
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,9 +64,23 @@ const Premios = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingPrize, setEditingPrize] = useState<Prize | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [newPrize, setNewPrize] = useState({
+    title: "",
+    description: "",
+    value_or_bonus: "",
+    deadline: "",
+    is_for_all: true,
+    target_users: [] as string[],
+    criteria_type: "",
+    criteria_target: 0,
+    criteria_period: "week",
+  });
+
+  const [editPrize, setEditPrize] = useState({
     title: "",
     description: "",
     value_or_bonus: "",
@@ -330,6 +345,101 @@ const Premios = () => {
         ...newPrize,
         target_users: newPrize.target_users.filter(id => id !== userId)
       });
+    }
+  };
+
+  const handleEditTargetUserChange = (userId: string, checked: boolean) => {
+    if (checked) {
+      setEditPrize({
+        ...editPrize,
+        target_users: [...editPrize.target_users, userId]
+      });
+    } else {
+      setEditPrize({
+        ...editPrize,
+        target_users: editPrize.target_users.filter(id => id !== userId)
+      });
+    }
+  };
+
+  const openEditDialog = (prize: Prize) => {
+    setEditingPrize(prize);
+    setEditPrize({
+      title: prize.title,
+      description: prize.description,
+      value_or_bonus: prize.value_or_bonus,
+      deadline: prize.deadline,
+      is_for_all: prize.is_for_all,
+      target_users: prize.target_users || [],
+      criteria_type: prize.criteria_type || "",
+      criteria_target: prize.criteria_target || 0,
+      criteria_period: prize.criteria_period || "week",
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditPrize = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile || !isGestor || !editingPrize) return;
+
+    setSubmitting(true);
+    try {
+      const prizeData = {
+        title: editPrize.title,
+        description: editPrize.description,
+        value_or_bonus: editPrize.value_or_bonus,
+        deadline: editPrize.deadline,
+        is_for_all: editPrize.is_for_all,
+        target_users: editPrize.is_for_all ? [] : editPrize.target_users,
+        criteria_type: editPrize.criteria_type && editPrize.criteria_type !== "none" ? editPrize.criteria_type : null,
+        criteria_target: editPrize.criteria_target || null,
+        criteria_period: editPrize.criteria_period || null,
+      };
+
+      const { error } = await supabase
+        .from("prizes")
+        .update(prizeData)
+        .eq("id", editingPrize.id);
+
+      if (error) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível editar o prêmio",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Prêmio editado!",
+        description: "O prêmio foi atualizado com sucesso.",
+      });
+
+      setEditDialogOpen(false);
+      setEditingPrize(null);
+      setEditPrize({
+        title: "",
+        description: "",
+        value_or_bonus: "",
+        deadline: "",
+        is_for_all: true,
+        target_users: [],
+        criteria_type: "",
+        criteria_target: 0,
+        criteria_period: "week",
+      });
+
+      loadPrizes();
+
+    } catch (error) {
+      console.error("Error editing prize:", error);
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -615,6 +725,218 @@ const Premios = () => {
             </DialogContent>
           </Dialog>
         )}
+
+        {/* Edit Prize Dialog */}
+        {isGestor && (
+          <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Editar Prêmio</DialogTitle>
+                <DialogDescription>
+                  Modifique os detalhes do prêmio
+                </DialogDescription>
+              </DialogHeader>
+              
+              <form onSubmit={handleEditPrize} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-title">Título</Label>
+                  <Input
+                    id="edit-title"
+                    value={editPrize.title}
+                    onChange={(e) => setEditPrize({ ...editPrize, title: e.target.value })}
+                    placeholder="Ex: Meta do Mês"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-description">Descrição</Label>
+                  <Textarea
+                    id="edit-description"
+                    value={editPrize.description}
+                    onChange={(e) => setEditPrize({ ...editPrize, description: e.target.value })}
+                    placeholder="Descreva os detalhes do prêmio..."
+                    rows={3}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-value_or_bonus">Valor ou Bônus</Label>
+                  <Input
+                    id="edit-value_or_bonus"
+                    value={editPrize.value_or_bonus}
+                    onChange={(e) => setEditPrize({ ...editPrize, value_or_bonus: e.target.value })}
+                    placeholder="Ex: R$ 1.000 ou 1 dia de folga"
+                    required
+                  />
+                </div>
+
+                 <div className="space-y-2">
+                   <Label htmlFor="edit-deadline">Prazo de Validade</Label>
+                   <Input
+                     id="edit-deadline"
+                     type="date"
+                     value={editPrize.deadline}
+                     onChange={(e) => setEditPrize({ ...editPrize, deadline: e.target.value })}
+                     required
+                   />
+                 </div>
+
+                 {/* Criteria Section */}
+                 <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                   <Label className="text-sm font-medium">🎯 Critério de Performance (Opcional)</Label>
+                   <p className="text-xs text-muted-foreground">
+                     Vincule o prêmio a uma meta específica de performance
+                   </p>
+                   
+                   <div className="space-y-3">
+                     <div className="space-y-2">
+                       <Label htmlFor="edit-criteria_type">Tipo de Meta</Label>
+                       <Select
+                         value={editPrize.criteria_type}
+                         onValueChange={(value) => setEditPrize({ ...editPrize, criteria_type: value })}
+                       >
+                         <SelectTrigger>
+                           <SelectValue placeholder="Selecione um tipo de meta" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           <SelectItem value="none">Sem critério específico</SelectItem>
+                           <SelectItem value="sales_amount">
+                             <div className="flex items-center gap-2">
+                               <TrendingUp className="h-4 w-4" />
+                               Valor de Vendas (R$)
+                             </div>
+                           </SelectItem>
+                           <SelectItem value="onboarding">
+                             <div className="flex items-center gap-2">
+                               <UserCheck className="h-4 w-4" />
+                               Onboardings
+                             </div>
+                           </SelectItem>
+                           <SelectItem value="packs_vendidos">
+                             <div className="flex items-center gap-2">
+                               <Package className="h-4 w-4" />
+                               Packs Vendidos
+                             </div>
+                           </SelectItem>
+                           <SelectItem value="cross_selling">
+                             <div className="flex items-center gap-2">
+                               <Target className="h-4 w-4" />
+                               Cross Selling
+                             </div>
+                           </SelectItem>
+                           <SelectItem value="sketchup_renewed">
+                             <div className="flex items-center gap-2">
+                               <RefreshCcw className="h-4 w-4" />
+                               SketchUp Renovações
+                             </div>
+                           </SelectItem>
+                           <SelectItem value="chaos_renewed">
+                             <div className="flex items-center gap-2">
+                               <RefreshCcw className="h-4 w-4" />
+                               Chaos Renovações
+                             </div>
+                           </SelectItem>
+                         </SelectContent>
+                       </Select>
+                     </div>
+
+                     {editPrize.criteria_type && editPrize.criteria_type !== "none" && (
+                       <>
+                         <div className="grid grid-cols-2 gap-3">
+                           <div className="space-y-2">
+                             <Label htmlFor="edit-criteria_target">Meta</Label>
+                             <Input
+                               id="edit-criteria_target"
+                               type="number"
+                               min="0"
+                               step={editPrize.criteria_type === "sales_amount" ? "1000" : "1"}
+                               value={editPrize.criteria_target}
+                               onChange={(e) => setEditPrize({ 
+                                 ...editPrize, 
+                                 criteria_target: parseFloat(e.target.value) || 0
+                               })}
+                               placeholder={editPrize.criteria_type === "sales_amount" ? "110000" : "7"}
+                               required
+                             />
+                           </div>
+                           <div className="space-y-2">
+                             <Label htmlFor="edit-criteria_period">Período</Label>
+                             <Select
+                               value={editPrize.criteria_period}
+                               onValueChange={(value) => setEditPrize({ ...editPrize, criteria_period: value })}
+                             >
+                               <SelectTrigger>
+                                 <SelectValue />
+                               </SelectTrigger>
+                               <SelectContent>
+                                 <SelectItem value="day">Diário</SelectItem>
+                                 <SelectItem value="week">Semanal</SelectItem>
+                                 <SelectItem value="month">Mensal</SelectItem>
+                               </SelectContent>
+                             </Select>
+                           </div>
+                         </div>
+                         <div className="text-xs text-muted-foreground bg-accent/20 p-2 rounded">
+                           💡 O progresso será calculado automaticamente baseado nos relatórios diários
+                         </div>
+                       </>
+                     )}
+                   </div>
+                 </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="edit-is_for_all"
+                      checked={editPrize.is_for_all}
+                      onCheckedChange={(checked) => 
+                        setEditPrize({ ...editPrize, is_for_all: checked as boolean })
+                      }
+                    />
+                    <Label htmlFor="edit-is_for_all">Para toda a equipe</Label>
+                  </div>
+
+                  {!editPrize.is_for_all && (
+                    <div className="space-y-2">
+                      <Label>Destinatários específicos:</Label>
+                      <div className="max-h-32 overflow-y-auto space-y-2">
+                        {profiles.map((profile) => (
+                          <div key={profile.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`edit-${profile.user_id}`}
+                              checked={editPrize.target_users.includes(profile.user_id)}
+                              onCheckedChange={(checked) => 
+                                handleEditTargetUserChange(profile.user_id, checked as boolean)
+                              }
+                            />
+                            <Label htmlFor={`edit-${profile.user_id}`} className="text-sm">
+                              {profile.name}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setEditDialogOpen(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={submitting} className="brand-gradient">
+                    {submitting ? "Salvando..." : "Salvar Alterações"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -646,22 +968,34 @@ const Premios = () => {
                         : "border-border bg-card"
                     }`}
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-semibold flex items-center gap-2">
-                        {prize.achievement?.achieved_at && (
-                          <CheckCircle className="h-4 w-4 text-success" />
-                        )}
-                        {prize.title}
-                      </h3>
-                      <Badge variant={prize.is_for_all ? "secondary" : "outline"}>
-                        {prize.is_for_all ? (
-                          <Users className="h-3 w-3 mr-1" />
-                        ) : (
-                          <User className="h-3 w-3 mr-1" />
-                        )}
-                        {prize.is_for_all ? "Todos" : "Específico"}
-                      </Badge>
-                    </div>
+                     <div className="flex justify-between items-start mb-2">
+                       <h3 className="font-semibold flex items-center gap-2">
+                         {prize.achievement?.achieved_at && (
+                           <CheckCircle className="h-4 w-4 text-success" />
+                         )}
+                         {prize.title}
+                       </h3>
+                       <div className="flex items-center gap-2">
+                         {isGestor && (
+                           <Button
+                             size="sm"
+                             variant="outline"
+                             onClick={() => openEditDialog(prize)}
+                             className="h-8 w-8 p-0"
+                           >
+                             <Edit3 className="h-3 w-3" />
+                           </Button>
+                         )}
+                         <Badge variant={prize.is_for_all ? "secondary" : "outline"}>
+                           {prize.is_for_all ? (
+                             <Users className="h-3 w-3 mr-1" />
+                           ) : (
+                             <User className="h-3 w-3 mr-1" />
+                           )}
+                           {prize.is_for_all ? "Todos" : "Específico"}
+                         </Badge>
+                       </div>
+                     </div>
 
                     <p className="text-sm text-muted-foreground mb-3">
                       {prize.description}
