@@ -39,14 +39,6 @@ interface DailyReport {
   onboarding: number;
 }
 
-const moodOptions = [
-  { value: "excelente", label: "😄 Excelente", color: "bg-green-500" },
-  { value: "muito_bom", label: "😊 Muito Bom", color: "bg-green-400" },
-  { value: "bom", label: "🙂 Bom", color: "bg-yellow-400" },
-  { value: "regular", label: "😐 Regular", color: "bg-orange-400" },
-  { value: "ruim", label: "😕 Ruim", color: "bg-red-400" },
-];
-
 const Daylin = () => {
   const { profile } = useAuth();
   const [todayReport, setTodayReport] = useState<DailyReport | null>(null);
@@ -243,10 +235,6 @@ const Daylin = () => {
     }
   };
 
-  const getMoodOption = (mood: string) => {
-    return moodOptions.find(option => option.value === mood);
-  };
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -331,8 +319,8 @@ const Daylin = () => {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Humor:</span>
-                    <span className="flex items-center gap-1">
-                      {getMoodOption(todayReport.mood || '')?.label}
+                    <span className="text-sm max-w-[200px] truncate" title={todayReport.mood || ''}>
+                      {todayReport.mood || 'Não informado'}
                     </span>
                   </div>
                   <Separator />
@@ -363,18 +351,13 @@ const Daylin = () => {
               <form onSubmit={handleStartDay} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="mood">Sentimento do dia</Label>
-                  <Select value={startForm.mood} onValueChange={(value) => setStartForm({ ...startForm, mood: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Como você está se sentindo?" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {moodOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Textarea
+                    id="mood"
+                    value={startForm.mood}
+                    onChange={(e) => setStartForm({ ...startForm, mood: e.target.value })}
+                    placeholder="Como você está se sentindo hoje? Descreva seu humor..."
+                    rows={2}
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
