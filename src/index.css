@@ -29,6 +29,8 @@
     --warning-foreground: 0 0% 15%;
     --blue: 217 91% 60%; /* Blue */
     --blue-foreground: 0 0% 100%;
+    --green: 142 71% 45%; /* Green */
+    --green-foreground: 0 0% 100%;
     --destructive: 0 84% 60%; /* Red */
     --destructive-foreground: 0 0% 100%;
     

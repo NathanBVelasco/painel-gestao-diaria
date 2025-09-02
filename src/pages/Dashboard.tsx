@@ -461,7 +461,7 @@ const Dashboard = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">
+            <div className="text-2xl font-bold text-green">
               {formatCurrency(data.vendasTotais)}
             </div>
           </CardContent>
