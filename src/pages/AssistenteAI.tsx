@@ -138,6 +138,56 @@ const AssistenteAI = () => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handlePaste = (event: React.ClipboardEvent) => {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+
+    const files: File[] = [];
+    
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          // Criar um nome para o arquivo colado
+          const timestamp = new Date().getTime();
+          const extension = item.type.split('/')[1];
+          const newFile = new File([file], `imagem-colada-${timestamp}.${extension}`, {
+            type: item.type
+          });
+          files.push(newFile);
+        }
+      }
+    }
+
+    if (files.length > 0) {
+      // Verificar tamanho dos arquivos
+      const validFiles = files.filter(file => {
+        const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
+        
+        if (!isValidSize) {
+          toast({
+            title: "Arquivo muito grande",
+            description: "A imagem colada excede o limite de 10MB",
+            variant: "destructive"
+          });
+          return false;
+        }
+        
+        return true;
+      });
+
+      if (validFiles.length > 0) {
+        setSelectedFiles(prev => [...prev, ...validFiles]);
+        toast({
+          title: "Imagem colada",
+          description: `${validFiles.length} imagem(ns) adicionada(s) ao chat`,
+        });
+      }
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!message.trim() && selectedFiles.length === 0) || loading || uploading) return;
@@ -474,7 +524,8 @@ Abraço,
                     <Textarea
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
-                      placeholder="Digite sua pergunta sobre vendas ou anexe imagens/PDFs..."
+                      onPaste={handlePaste}
+                      placeholder="Digite sua pergunta sobre vendas, cole imagens ou anexe PDFs..."
                       disabled={loading || uploading}
                       className="min-h-[80px] max-h-[200px] resize-none"
                       onKeyDown={(e) => {
