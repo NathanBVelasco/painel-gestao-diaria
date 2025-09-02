@@ -27,6 +27,8 @@
     --success-foreground: 0 0% 100%;
     --warning: 45 93% 47%; /* Yellow */
     --warning-foreground: 0 0% 15%;
+    --blue: 217 91% 60%; /* Blue */
+    --blue-foreground: 0 0% 100%;
     --destructive: 0 84% 60%; /* Red */
     --destructive-foreground: 0 0% 100%;
     
