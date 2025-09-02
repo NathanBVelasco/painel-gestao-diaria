@@ -13,10 +13,10 @@ serve(async (req) => {
   }
 
   try {
-    const { message } = await req.json();
+    const { message, attachments = [] } = await req.json();
 
-    if (!message) {
-      throw new Error('Mensagem é obrigatória');
+    if (!message && attachments.length === 0) {
+      throw new Error('Mensagem ou anexos são obrigatórios');
     }
 
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
@@ -25,7 +25,7 @@ serve(async (req) => {
     }
 
     // Prompt especializado em vendas de SketchUp/TotalCAD
-    const systemPrompt = `Você é um assistente especializado em vendas de software CAD, especificamente SketchUp, LayOut e produtos Trimble. 
+    let systemPrompt = `Você é um assistente especializado em vendas de software CAD, especificamente SketchUp, LayOut e produtos Trimble. 
 
 Seu objetivo é ajudar vendedores brasileiros a:
 - Superar objeções de preço
@@ -58,6 +58,33 @@ DIRETRIZES:
 
 Responda sempre em português brasileiro com foco em vendas.`;
 
+    // Processar anexos se houver
+    const processedAttachments = [];
+    if (attachments && attachments.length > 0) {
+      systemPrompt += `\n\nCONTEXTO ADICIONAL: O usuário enviou ${attachments.length} arquivo(s). Analise o conteúdo e incorpore na sua resposta de vendas.`;
+      
+      for (const attachment of attachments) {
+        if (attachment.type.startsWith('image/')) {
+          // Para imagens, converter para base64 e incluir no prompt
+          try {
+            const response = await fetch(attachment.url);
+            const arrayBuffer = await response.arrayBuffer();
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+            
+            processedAttachments.push({
+              type: 'image',
+              data: `data:${attachment.type};base64,${base64}`,
+              name: attachment.name
+            });
+          } catch (error) {
+            console.error('Erro ao processar imagem:', error);
+          }
+        } else if (attachment.type === 'application/pdf') {
+          systemPrompt += `\n\nPDF anexado: ${attachment.name} - Analise este documento e forneça insights de vendas relevantes.`;
+        }
+      }
+    }
+
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`,
       {
@@ -70,7 +97,13 @@ Responda sempre em português brasileiro com foco em vendas.`;
             {
               parts: [
                 { text: systemPrompt },
-                { text: `Usuário: ${message}` }
+                { text: `Usuário: ${message || 'Usuário enviou anexos para análise'}` },
+                ...processedAttachments.filter(att => att.type === 'image').map(att => ({
+                  inline_data: {
+                    mime_type: att.data.split(';')[0].split(':')[1],
+                    data: att.data.split(',')[1]
+                  }
+                }))
               ]
             }
           ],

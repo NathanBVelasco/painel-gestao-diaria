@@ -16,6 +16,8 @@ export type Database = {
     Tables: {
       ai_conversations: {
         Row: {
+          attachment_urls: string[] | null
+          attachments: Json | null
           created_at: string
           id: string
           message: string
@@ -23,6 +25,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attachment_urls?: string[] | null
+          attachments?: Json | null
           created_at?: string
           id?: string
           message: string
@@ -30,6 +34,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attachment_urls?: string[] | null
+          attachments?: Json | null
           created_at?: string
           id?: string
           message?: string
