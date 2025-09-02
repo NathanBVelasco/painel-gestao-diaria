@@ -48,6 +48,7 @@ interface SellerDaylinStatus {
   id: string;
   name: string;
   user_id: string;
+  report_id?: string;
   started_at?: string;
   ended_at?: string;
   mood?: string;
@@ -55,6 +56,13 @@ interface SellerDaylinStatus {
   sketchup_to_renew?: number;
   chaos_to_renew?: number;
   daily_strategy?: string;
+  difficulties?: string;
+  sketchup_renewed?: number;
+  chaos_renewed?: number;
+  sales_amount?: number;
+  cross_selling?: number;
+  onboarding?: number;
+  packs_vendidos?: number;
 }
 
 interface MonthlyTarget {
@@ -90,6 +98,23 @@ const Daylin = () => {
   const [sellersWithTargets, setSellersWithTargets] = useState<SellerWithTarget[]>([]);
   const [editingTarget, setEditingTarget] = useState<string | null>(null);
   const [targetForm, setTargetForm] = useState({ amount: "" });
+
+  // Edit report states for gestor
+  const [editingReport, setEditingReport] = useState<string | null>(null);
+  const [editReportForm, setEditReportForm] = useState({
+    mood: "",
+    sketchup_to_renew: "",
+    chaos_to_renew: "",
+    forecast_amount: "",
+    daily_strategy: "",
+    difficulties: "",
+    sketchup_renewed: "",
+    chaos_renewed: "",
+    sales_amount: "",
+    cross_selling: "",
+    onboarding: "",
+    packs_vendidos: "",
+  });
 
   // Start day form state
   const [startForm, setStartForm] = useState({
@@ -194,7 +219,7 @@ const Daylin = () => {
       // Get today's reports for all sellers
       const { data: reports, error: reportsError } = await supabase
         .from("daily_reports")
-        .select("user_id, started_at, ended_at, mood, forecast_amount, sketchup_to_renew, chaos_to_renew, daily_strategy")
+        .select("id, user_id, started_at, ended_at, mood, forecast_amount, sketchup_to_renew, chaos_to_renew, daily_strategy, difficulties, sketchup_renewed, chaos_renewed, sales_amount, cross_selling, onboarding, packs_vendidos")
         .eq("date", today);
 
       if (reportsError) {
@@ -214,6 +239,7 @@ const Daylin = () => {
           id: seller.id,
           name: seller.name,
           user_id: seller.user_id,
+          report_id: report?.id,
           started_at: report?.started_at,
           ended_at: report?.ended_at,
           mood: report?.mood,
@@ -221,6 +247,13 @@ const Daylin = () => {
           sketchup_to_renew: report?.sketchup_to_renew,
           chaos_to_renew: report?.chaos_to_renew,
           daily_strategy: report?.daily_strategy,
+          difficulties: report?.difficulties,
+          sketchup_renewed: report?.sketchup_renewed,
+          chaos_renewed: report?.chaos_renewed,
+          sales_amount: report?.sales_amount,
+          cross_selling: report?.cross_selling,
+          onboarding: report?.onboarding,
+          packs_vendidos: report?.packs_vendidos,
         };
       }) || [];
 
@@ -342,6 +375,67 @@ const Daylin = () => {
 
     } catch (error) {
       console.error("Error saving target:", error);
+    }
+  };
+
+  const saveEditedReport = async (reportId: string) => {
+    if (!profile || !isGestor) return;
+
+    try {
+      const updateData = {
+        mood: editReportForm.mood,
+        sketchup_to_renew: parseInt(editReportForm.sketchup_to_renew) || 0,
+        chaos_to_renew: parseInt(editReportForm.chaos_to_renew) || 0,
+        forecast_amount: parseDecimalValue(editReportForm.forecast_amount),
+        daily_strategy: editReportForm.daily_strategy,
+        difficulties: editReportForm.difficulties,
+        sketchup_renewed: parseInt(editReportForm.sketchup_renewed) || 0,
+        chaos_renewed: parseInt(editReportForm.chaos_renewed) || 0,
+        sales_amount: parseDecimalValue(editReportForm.sales_amount),
+        cross_selling: parseInt(editReportForm.cross_selling) || 0,
+        onboarding: parseInt(editReportForm.onboarding) || 0,
+        packs_vendidos: parseInt(editReportForm.packs_vendidos) || 0,
+      };
+
+      const { error } = await supabase
+        .from("daily_reports")
+        .update(updateData)
+        .eq("id", reportId);
+
+      if (error) {
+        console.error("Error updating report:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível salvar as alterações",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Alterações salvas!",
+        description: "Os dados do Daylin foram atualizados com sucesso.",
+      });
+
+      loadSellersStatus();
+      setEditingReport(null);
+      setEditReportForm({
+        mood: "",
+        sketchup_to_renew: "",
+        chaos_to_renew: "",
+        forecast_amount: "",
+        daily_strategy: "",
+        difficulties: "",
+        sketchup_renewed: "",
+        chaos_renewed: "",
+        sales_amount: "",
+        cross_selling: "",
+        onboarding: "",
+        packs_vendidos: "",
+      });
+
+    } catch (error) {
+      console.error("Error updating report:", error);
     }
   };
 
@@ -598,61 +692,304 @@ const Daylin = () => {
                   {[...sellersStarted, ...sellersFinished].length === 0 ? (
                     <p className="text-muted-foreground">Nenhum vendedor iniciou o dia ainda.</p>
                   ) : (
-                    <div className="space-y-4">
-                      {[...sellersStarted, ...sellersFinished].map(seller => (
-                        <div key={seller.id} className="p-4 rounded-lg bg-muted/50 border">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium">{seller.name}</h4>
-                            <div className="flex items-center gap-2">
-                              {seller.ended_at ? (
-                                <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
-                                  <CheckCircle className="w-3 h-3 mr-1" />
-                                  Finalizado
-                                </Badge>
-                              ) : (
-                                <Badge variant="secondary" className="bg-orange-500/10 text-orange-500 border-orange-500/20">
-                                  <Sun className="w-3 h-3 mr-1" />
-                                  Ativo
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-muted-foreground">Iniciou:</span>
-                              <p>{seller.started_at ? new Date(seller.started_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Forecast:</span>
-                              <p className="font-medium">R$ {(seller.forecast_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">SketchUp:</span>
-                              <p>{seller.sketchup_to_renew || 0}</p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Chaos:</span>
-                              <p>{seller.chaos_to_renew || 0}</p>
-                            </div>
-                          </div>
+                     <div className="space-y-4">
+                       {[...sellersStarted, ...sellersFinished].map(seller => (
+                         <div key={seller.id} className="p-4 rounded-lg bg-muted/50 border">
+                           {editingReport === seller.user_id ? (
+                             <div className="space-y-4">
+                               <div className="flex items-center justify-between mb-4">
+                                 <h4 className="font-medium">Editando: {seller.name}</h4>
+                                 <div className="flex items-center gap-2">
+                                   <Button
+                                     size="sm"
+                                     onClick={() => {
+                                       if (seller.report_id) {
+                                         saveEditedReport(seller.report_id);
+                                       }
+                                     }}
+                                   >
+                                     <Save className="h-3 w-3 mr-1" />
+                                     Salvar
+                                   </Button>
+                                   <Button
+                                     size="sm"
+                                     variant="outline"
+                                     onClick={() => {
+                                       setEditingReport(null);
+                                       setEditReportForm({
+                                         mood: "",
+                                         sketchup_to_renew: "",
+                                         chaos_to_renew: "",
+                                         forecast_amount: "",
+                                         daily_strategy: "",
+                                         difficulties: "",
+                                         sketchup_renewed: "",
+                                         chaos_renewed: "",
+                                         sales_amount: "",
+                                         cross_selling: "",
+                                         onboarding: "",
+                                         packs_vendidos: "",
+                                       });
+                                     }}
+                                   >
+                                     <X className="h-3 w-3" />
+                                   </Button>
+                                 </div>
+                               </div>
+                               
+                               <div className="grid grid-cols-1 gap-4">
+                                 <div className="space-y-2">
+                                   <Label htmlFor="edit_mood">Humor</Label>
+                                   <Textarea
+                                     id="edit_mood"
+                                     value={editReportForm.mood}
+                                     onChange={(e) => setEditReportForm({ ...editReportForm, mood: e.target.value })}
+                                     placeholder="Como o vendedor está se sentindo..."
+                                     rows={2}
+                                   />
+                                 </div>
 
-                          {seller.mood && (
-                            <div className="mt-3">
-                              <span className="text-muted-foreground text-sm">Humor:</span>
-                              <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.mood}</p>
-                            </div>
-                          )}
+                                 <div className="grid grid-cols-2 gap-4">
+                                   <div className="space-y-2">
+                                     <Label htmlFor="edit_sketchup_to_renew">SketchUp (a renovar)</Label>
+                                     <Input
+                                       id="edit_sketchup_to_renew"
+                                       type="number"
+                                       min="0"
+                                       value={editReportForm.sketchup_to_renew}
+                                       onChange={(e) => setEditReportForm({ ...editReportForm, sketchup_to_renew: e.target.value })}
+                                       placeholder="0"
+                                     />
+                                   </div>
+                                   <div className="space-y-2">
+                                     <Label htmlFor="edit_chaos_to_renew">Chaos (a renovar)</Label>
+                                     <Input
+                                       id="edit_chaos_to_renew"
+                                       type="number"
+                                       min="0"
+                                       value={editReportForm.chaos_to_renew}
+                                       onChange={(e) => setEditReportForm({ ...editReportForm, chaos_to_renew: e.target.value })}
+                                       placeholder="0"
+                                     />
+                                   </div>
+                                 </div>
 
-                          {seller.daily_strategy && (
-                            <div className="mt-3">
-                              <span className="text-muted-foreground text-sm">Estratégia:</span>
-                              <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.daily_strategy}</p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                                 <div className="space-y-2">
+                                   <Label htmlFor="edit_forecast_amount">Forecast (R$)</Label>
+                                   <Input
+                                     id="edit_forecast_amount"
+                                     type="text"
+                                     value={editReportForm.forecast_amount}
+                                     onChange={(e) => setEditReportForm({ ...editReportForm, forecast_amount: e.target.value })}
+                                     placeholder="0,00 ou 0.00"
+                                   />
+                                 </div>
+
+                                 <div className="space-y-2">
+                                   <Label htmlFor="edit_daily_strategy">Estratégia do dia</Label>
+                                   <Textarea
+                                     id="edit_daily_strategy"
+                                     value={editReportForm.daily_strategy}
+                                     onChange={(e) => setEditReportForm({ ...editReportForm, daily_strategy: e.target.value })}
+                                     placeholder="Estratégia do vendedor..."
+                                     rows={2}
+                                   />
+                                 </div>
+
+                                 {seller.ended_at && (
+                                   <>
+                                     <Separator />
+                                     <div className="space-y-4">
+                                       <h5 className="font-medium text-sm">Dados de Encerramento</h5>
+                                       
+                                       <div className="space-y-2">
+                                         <Label htmlFor="edit_difficulties">Dificuldades</Label>
+                                         <Textarea
+                                           id="edit_difficulties"
+                                           value={editReportForm.difficulties}
+                                           onChange={(e) => setEditReportForm({ ...editReportForm, difficulties: e.target.value })}
+                                           placeholder="Dificuldades do dia..."
+                                           rows={2}
+                                         />
+                                       </div>
+
+                                       <div className="grid grid-cols-2 gap-4">
+                                         <div className="space-y-2">
+                                           <Label htmlFor="edit_sketchup_renewed">SketchUp Renovado</Label>
+                                           <Input
+                                             id="edit_sketchup_renewed"
+                                             type="number"
+                                             min="0"
+                                             value={editReportForm.sketchup_renewed}
+                                             onChange={(e) => setEditReportForm({ ...editReportForm, sketchup_renewed: e.target.value })}
+                                             placeholder="0"
+                                           />
+                                         </div>
+                                         <div className="space-y-2">
+                                           <Label htmlFor="edit_chaos_renewed">Chaos Renovado</Label>
+                                           <Input
+                                             id="edit_chaos_renewed"
+                                             type="number"
+                                             min="0"
+                                             value={editReportForm.chaos_renewed}
+                                             onChange={(e) => setEditReportForm({ ...editReportForm, chaos_renewed: e.target.value })}
+                                             placeholder="0"
+                                           />
+                                         </div>
+                                       </div>
+
+                                       <div className="space-y-2">
+                                         <Label htmlFor="edit_sales_amount">Vendas (R$)</Label>
+                                         <Input
+                                           id="edit_sales_amount"
+                                           type="text"
+                                           value={editReportForm.sales_amount}
+                                           onChange={(e) => setEditReportForm({ ...editReportForm, sales_amount: e.target.value })}
+                                           placeholder="0,00 ou 0.00"
+                                         />
+                                       </div>
+
+                                       <div className="grid grid-cols-3 gap-4">
+                                         <div className="space-y-2">
+                                           <Label htmlFor="edit_cross_selling">Cross Selling</Label>
+                                           <Input
+                                             id="edit_cross_selling"
+                                             type="number"
+                                             min="0"
+                                             value={editReportForm.cross_selling}
+                                             onChange={(e) => setEditReportForm({ ...editReportForm, cross_selling: e.target.value })}
+                                             placeholder="0"
+                                           />
+                                         </div>
+                                         <div className="space-y-2">
+                                           <Label htmlFor="edit_onboarding">Onboarding</Label>
+                                           <Input
+                                             id="edit_onboarding"
+                                             type="number"
+                                             min="0"
+                                             value={editReportForm.onboarding}
+                                             onChange={(e) => setEditReportForm({ ...editReportForm, onboarding: e.target.value })}
+                                             placeholder="0"
+                                           />
+                                         </div>
+                                         <div className="space-y-2">
+                                           <Label htmlFor="edit_packs_vendidos">Packs Vendidos</Label>
+                                           <Input
+                                             id="edit_packs_vendidos"
+                                             type="number"
+                                             min="0"
+                                             value={editReportForm.packs_vendidos}
+                                             onChange={(e) => setEditReportForm({ ...editReportForm, packs_vendidos: e.target.value })}
+                                             placeholder="0"
+                                           />
+                                         </div>
+                                       </div>
+                                     </div>
+                                   </>
+                                 )}
+                               </div>
+                             </div>
+                           ) : (
+                             <>
+                               <div className="flex items-center justify-between mb-2">
+                                 <h4 className="font-medium">{seller.name}</h4>
+                                 <div className="flex items-center gap-2">
+                                   {seller.report_id && (
+                                     <Button
+                                       size="sm"
+                                       variant="outline"
+                                       onClick={() => {
+                                         setEditingReport(seller.user_id);
+                                         setEditReportForm({
+                                           mood: seller.mood || "",
+                                           sketchup_to_renew: seller.sketchup_to_renew?.toString() || "",
+                                           chaos_to_renew: seller.chaos_to_renew?.toString() || "",
+                                           forecast_amount: seller.forecast_amount?.toString() || "",
+                                           daily_strategy: seller.daily_strategy || "",
+                                           difficulties: seller.difficulties || "",
+                                           sketchup_renewed: seller.sketchup_renewed?.toString() || "",
+                                           chaos_renewed: seller.chaos_renewed?.toString() || "",
+                                           sales_amount: seller.sales_amount?.toString() || "",
+                                           cross_selling: seller.cross_selling?.toString() || "",
+                                           onboarding: seller.onboarding?.toString() || "",
+                                           packs_vendidos: seller.packs_vendidos?.toString() || "",
+                                         });
+                                       }}
+                                     >
+                                       <Edit className="h-3 w-3 mr-1" />
+                                       Editar
+                                     </Button>
+                                   )}
+                                   {seller.ended_at ? (
+                                     <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
+                                       <CheckCircle className="w-3 h-3 mr-1" />
+                                       Finalizado
+                                     </Badge>
+                                   ) : (
+                                     <Badge variant="secondary" className="bg-orange-500/10 text-orange-500 border-orange-500/20">
+                                       <Sun className="w-3 h-3 mr-1" />
+                                       Ativo
+                                     </Badge>
+                                   )}
+                                 </div>
+                               </div>
+                               
+                               <div className="grid grid-cols-2 gap-4 text-sm">
+                                 <div>
+                                   <span className="text-muted-foreground">Iniciou:</span>
+                                   <p>{seller.started_at ? new Date(seller.started_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Forecast:</span>
+                                   <p className="font-medium">R$ {(seller.forecast_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">SketchUp:</span>
+                                   <p>{seller.sketchup_to_renew || 0}</p>
+                                 </div>
+                                 <div>
+                                   <span className="text-muted-foreground">Chaos:</span>
+                                   <p>{seller.chaos_to_renew || 0}</p>
+                                 </div>
+                                 {seller.ended_at && (
+                                   <>
+                                     <div>
+                                       <span className="text-muted-foreground">Vendas:</span>
+                                       <p className="font-medium">R$ {(seller.sales_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                     </div>
+                                     <div>
+                                       <span className="text-muted-foreground">Packs Vendidos:</span>
+                                       <p>{seller.packs_vendidos || 0}</p>
+                                     </div>
+                                   </>
+                                 )}
+                               </div>
+
+                               {seller.mood && (
+                                 <div className="mt-3">
+                                   <span className="text-muted-foreground text-sm">Humor:</span>
+                                   <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.mood}</p>
+                                 </div>
+                               )}
+
+                               {seller.daily_strategy && (
+                                 <div className="mt-3">
+                                   <span className="text-muted-foreground text-sm">Estratégia:</span>
+                                   <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.daily_strategy}</p>
+                                 </div>
+                               )}
+
+                               {seller.ended_at && seller.difficulties && (
+                                 <div className="mt-3">
+                                   <span className="text-muted-foreground text-sm">Dificuldades:</span>
+                                   <p className="text-sm mt-1 p-2 bg-background rounded border">{seller.difficulties}</p>
+                                 </div>
+                               )}
+                             </>
+                           )}
+                         </div>
+                       ))}
+                     </div>
                   )}
                 </CardContent>
               </Card>
