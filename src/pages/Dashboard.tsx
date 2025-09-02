@@ -20,7 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
-type Period = "HOJE" | "ONTEM" | "MENSAL" | "TRIMESTRAL";
+type Period = "HOJE" | "ONTEM" | "SEMANAL" | "MENSAL" | "TRIMESTRAL";
 type Product = "TRIMBLE" | "CHAOS" | "TODOS";
 
 interface DashboardData {
@@ -128,6 +128,12 @@ const Dashboard = () => {
         case "ONTEM":
           startDate = new Date(today);
           startDate.setDate(today.getDate() - 1);
+          break;
+        case "SEMANAL":
+          startDate = new Date(today);
+          const dayOfWeek = today.getDay();
+          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, Monday = 1
+          startDate.setDate(today.getDate() - daysToMonday);
           break;
         case "MENSAL":
           startDate = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -292,6 +298,7 @@ const Dashboard = () => {
             <SelectContent>
               <SelectItem value="HOJE">Hoje</SelectItem>
               <SelectItem value="ONTEM">Ontem</SelectItem>
+              <SelectItem value="SEMANAL">Semanal</SelectItem>
               <SelectItem value="MENSAL">Mensal</SelectItem>
               <SelectItem value="TRIMESTRAL">Trimestral</SelectItem>
             </SelectContent>
