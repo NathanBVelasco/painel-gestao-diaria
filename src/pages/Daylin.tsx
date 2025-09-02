@@ -86,6 +86,7 @@ const Daylin = () => {
 
   useEffect(() => {
     if (isGestor) {
+      setLoading(false); // Set loading false for gestor immediately
       loadSellersStatus();
     } else {
       loadTodayReport();
