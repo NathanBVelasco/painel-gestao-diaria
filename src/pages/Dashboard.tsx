@@ -19,7 +19,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 
 type Period = "HOJE" | "ONTEM" | "SEMANAL" | "MENSAL" | "TRIMESTRAL";
 type Product = "TRIMBLE" | "CHAOS" | "TODOS";
@@ -555,18 +555,43 @@ const Dashboard = () => {
             Comparativo entre o forecast planejado e as vendas realizadas
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData}>
+        <CardContent className="p-4">
+          <ResponsiveContainer width="100%" height={400}>
+            <BarChart 
+              data={chartData}
+              margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+            >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="day" />
-              <YAxis tickFormatter={(value) => formatCurrency(value)} />
+              <XAxis 
+                dataKey="day" 
+                tick={{ fontSize: 12 }}
+                height={60}
+              />
+              <YAxis 
+                tickFormatter={(value) => formatCurrency(value)}
+                tick={{ fontSize: 11 }}
+                width={80}
+              />
               <Tooltip 
                 formatter={(value: number) => formatCurrency(value)}
                 labelStyle={{ color: 'hsl(var(--foreground))' }}
               />
-              <Bar dataKey="forecast" fill="hsl(var(--accent))" name="Forecast" />
-              <Bar dataKey="vendas" fill="hsl(var(--primary))" name="Vendas" />
+              <Bar dataKey="forecast" fill="hsl(var(--accent))" name="Forecast">
+                <LabelList 
+                  dataKey="forecast" 
+                  position="top" 
+                  formatter={(value: number) => formatCurrency(value)}
+                  style={{ fontSize: '10px', fill: 'hsl(var(--muted-foreground))' }}
+                />
+              </Bar>
+              <Bar dataKey="vendas" fill="hsl(var(--primary))" name="Vendas">
+                <LabelList 
+                  dataKey="vendas" 
+                  position="top" 
+                  formatter={(value: number) => formatCurrency(value)}
+                  style={{ fontSize: '10px', fill: 'hsl(var(--muted-foreground))' }}
+                />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
