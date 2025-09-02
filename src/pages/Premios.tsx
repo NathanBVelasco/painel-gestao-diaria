@@ -1140,11 +1140,18 @@ const Premios = () => {
                            </span>
                          </div>
                          
-                         <div className="grid grid-cols-2 gap-2">
-                           {allUsersProgress
-                             .filter(p => p.prizeId === prize.id)
-                             .slice(0, 4)
-                             .map((userProgress) => (
+                          <div className="grid grid-cols-2 gap-2">
+                            {allUsersProgress
+                              .filter(p => p.prizeId === prize.id)
+                              .sort((a, b) => {
+                                // First, prioritize those who achieved the prize
+                                if (a.isAchieved && !b.isAchieved) return -1;
+                                if (!a.isAchieved && b.isAchieved) return 1;
+                                // Then sort by progress (highest first)
+                                return b.progress - a.progress;
+                              })
+                              .slice(0, 4)
+                              .map((userProgress) => (
                                <div 
                                  key={userProgress.userId}
                                  className="flex items-center justify-between text-xs p-2 rounded border bg-muted/30"
