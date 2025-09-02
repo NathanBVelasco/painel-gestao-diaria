@@ -61,6 +61,7 @@ interface Profile {
 const Premios = () => {
   const { profile, isGestor } = useAuth();
   const [prizes, setPrizes] = useState<Prize[]>([]);
+  const [allUsersProgress, setAllUsersProgress] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -93,9 +94,12 @@ const Premios = () => {
   });
 
   useEffect(() => {
-    loadPrizes();
-    if (isGestor) {
-      loadProfiles();
+    if (profile) {
+      loadPrizes();
+      if (isGestor) {
+        loadProfiles();
+        loadAllUsersProgress();
+      }
     }
   }, [profile, isGestor]);
 
@@ -269,6 +273,70 @@ const Premios = () => {
     }
   };
 
+  const loadAllUsersProgress = async () => {
+    if (!isGestor) return;
+
+    try {
+      // Get all active prizes
+      const { data: activePrizesData, error: prizesError } = await supabase
+        .from("prizes")
+        .select("*")
+        .eq("is_active", true);
+
+      if (prizesError || !activePrizesData) {
+        console.error("Error loading prizes for progress:", prizesError);
+        return;
+      }
+
+      // Get all vendedor profiles
+      const { data: vendedorProfiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("user_id, name")
+        .eq("role", "vendedor");
+
+      if (profilesError || !vendedorProfiles) {
+        console.error("Error loading profiles for progress:", profilesError);
+        return;
+      }
+
+      // Calculate progress for each user and each prize
+      const progressData = [];
+      
+      for (const prize of activePrizesData) {
+        for (const vendedor of vendedorProfiles) {
+          let progress = 0;
+          
+          if (prize.criteria_type && prize.criteria_target) {
+            progress = await calculatePrizeProgress(
+              prize.criteria_type,
+              prize.criteria_target,
+              prize.criteria_period || 'week',
+              prize.created_at,
+              prize.deadline,
+              vendedor.user_id
+            );
+          }
+
+          progressData.push({
+            prizeId: prize.id,
+            prizeTitle: prize.title,
+            userId: vendedor.user_id,
+            userName: vendedor.name,
+            progress: progress,
+            isAchieved: progress >= 100,
+            criteriaType: prize.criteria_type,
+            criteriaTarget: prize.criteria_target,
+            criteriaePeriod: prize.criteria_period
+          });
+        }
+      }
+
+      setAllUsersProgress(progressData);
+    } catch (error) {
+      console.error("Error loading all users progress:", error);
+    }
+  };
+
   const handleCreatePrize = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile || !isGestor) return;
@@ -321,6 +389,9 @@ const Premios = () => {
       });
 
       loadPrizes();
+      if (isGestor) {
+        loadAllUsersProgress();
+      }
 
     } catch (error) {
       console.error("Error creating prize:", error);
@@ -430,6 +501,9 @@ const Premios = () => {
       });
 
       loadPrizes();
+      if (isGestor) {
+        loadAllUsersProgress();
+      }
 
     } catch (error) {
       console.error("Error editing prize:", error);
@@ -938,6 +1012,82 @@ const Premios = () => {
           </Dialog>
         )}
       </div>
+
+      {/* Team Progress Section - Only for Gestors */}
+      {isGestor && (
+        <Card className="card-shadow mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Progresso da Equipe
+            </CardTitle>
+            <CardDescription>
+              Acompanhe o progresso de todos os vendedores nos prêmios ativos
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {activePrizes.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Trophy className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>Nenhum prêmio ativo para acompanhar</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {activePrizes.map((prize) => {
+                  const prizeProgress = allUsersProgress.filter(p => p.prizeId === prize.id);
+                  
+                  return (
+                    <div key={prize.id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-4">
+                        <h3 className="font-semibold text-lg">{prize.title}</h3>
+                        <Badge variant="secondary">
+                          {prize.criteria_target?.toLocaleString('pt-BR')}
+                          {prize.criteria_type === 'sales_amount' ? ' R$' : ''}
+                          {' '}({getCriteriaPeriodLabel(prize.criteria_period || 'week')})
+                        </Badge>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {prizeProgress.map((userProgress) => (
+                          <div 
+                            key={userProgress.userId}
+                            className={`p-3 rounded-lg border ${
+                              userProgress.isAchieved 
+                                ? 'border-success bg-success/5' 
+                                : 'border-border bg-card'
+                            }`}
+                          >
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="font-medium text-sm">{userProgress.userName}</span>
+                              {userProgress.isAchieved && (
+                                <CheckCircle className="h-4 w-4 text-success" />
+                              )}
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-xs text-muted-foreground">
+                                <span>Progresso:</span>
+                                <span>{userProgress.progress}%</span>
+                              </div>
+                              <Progress value={userProgress.progress} className="h-2" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {prizeProgress.length === 0 && (
+                        <div className="text-center py-4 text-muted-foreground">
+                          <p className="text-sm">Carregando progresso...</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Active Prizes */}
