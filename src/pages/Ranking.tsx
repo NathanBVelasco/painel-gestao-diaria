@@ -53,8 +53,11 @@ const Ranking = () => {
 
     setLoading(true);
     try {
-      // Get all profiles (if gestor) or just current user
-      let profilesQuery = supabase.from("profiles").select("user_id, name");
+      // Get all profiles (if gestor) or just current user, excluding the specific gestor
+      let profilesQuery = supabase
+        .from("profiles")
+        .select("user_id, name, email")
+        .neq("email", "vendas19@totalcad.com.br");
       
       if (!isGestor) {
         profilesQuery = profilesQuery.eq("user_id", profile.user_id);
