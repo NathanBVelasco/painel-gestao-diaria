@@ -52,6 +52,7 @@ export type Database = {
           id: string
           mood: string | null
           onboarding: number | null
+          packs_vendidos: number | null
           sales_amount: number | null
           sketchup_renewed: number | null
           sketchup_to_renew: number | null
@@ -72,6 +73,7 @@ export type Database = {
           id?: string
           mood?: string | null
           onboarding?: number | null
+          packs_vendidos?: number | null
           sales_amount?: number | null
           sketchup_renewed?: number | null
           sketchup_to_renew?: number | null
@@ -92,6 +94,7 @@ export type Database = {
           id?: string
           mood?: string | null
           onboarding?: number | null
+          packs_vendidos?: number | null
           sales_amount?: number | null
           sketchup_renewed?: number | null
           sketchup_to_renew?: number | null

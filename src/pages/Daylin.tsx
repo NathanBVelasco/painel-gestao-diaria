@@ -37,6 +37,7 @@ interface DailyReport {
   sales_amount: number;
   cross_selling: number;
   onboarding: number;
+  packs_vendidos: number;
 }
 
 const Daylin = () => {
@@ -63,6 +64,7 @@ const Daylin = () => {
     sales_amount: "",
     cross_selling: "",
     onboarding: "",
+    packs_vendidos: "",
   });
 
   useEffect(() => {
@@ -105,6 +107,7 @@ const Daylin = () => {
           sales_amount: data.sales_amount?.toString() || "",
           cross_selling: data.cross_selling?.toString() || "",
           onboarding: data.onboarding?.toString() || "",
+          packs_vendidos: data.packs_vendidos?.toString() || "",
         });
       }
 
@@ -198,6 +201,7 @@ const Daylin = () => {
         sales_amount: parseFloat(endForm.sales_amount) || 0,
         cross_selling: parseInt(endForm.cross_selling) || 0,
         onboarding: parseInt(endForm.onboarding) || 0,
+        packs_vendidos: parseInt(endForm.packs_vendidos) || 0,
       };
 
       const { data, error } = await supabase
@@ -478,6 +482,10 @@ const Daylin = () => {
                     <span className="text-muted-foreground">Onboarding:</span>
                     <span>{todayReport.onboarding}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Packs Vendidos:</span>
+                    <span>{todayReport.packs_vendidos}</span>
+                  </div>
                   {todayReport.difficulties && (
                     <>
                       <Separator />
@@ -563,6 +571,18 @@ const Daylin = () => {
                       placeholder="0"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="packs_vendidos">Packs Vendidos</Label>
+                  <Input
+                    id="packs_vendidos"
+                    type="number"
+                    min="0"
+                    value={endForm.packs_vendidos}
+                    onChange={(e) => setEndForm({ ...endForm, packs_vendidos: e.target.value })}
+                    placeholder="0"
+                  />
                 </div>
 
                 <Button 

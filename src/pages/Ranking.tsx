@@ -18,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
-type SortBy = "vendas" | "renovado_trimble" | "renovado_chaos" | "cross_selling" | "onboarding";
+type SortBy = "vendas" | "renovado_trimble" | "renovado_chaos" | "cross_selling" | "onboarding" | "packs_vendidos";
 
 interface RankingUser {
   user_id: string;
@@ -28,11 +28,13 @@ interface RankingUser {
   renovado_chaos: { percent: number; quantity: number };
   cross_selling: number;
   onboarding: number;
+  packs_vendidos: number;
   position_vendas: number;
   position_renovado_trimble: number;
   position_renovado_chaos: number;
   position_cross_selling: number;
   position_onboarding: number;
+  position_packs_vendidos: number;
 }
 
 const Ranking = () => {
@@ -101,6 +103,7 @@ const Ranking = () => {
             acc.chaos_renewed += report.chaos_renewed || 0;
             acc.cross_selling += report.cross_selling || 0;
             acc.onboarding += report.onboarding || 0;
+            acc.packs_vendidos += report.packs_vendidos || 0;
             return acc;
           },
           {
@@ -111,6 +114,7 @@ const Ranking = () => {
             chaos_renewed: 0,
             cross_selling: 0,
             onboarding: 0,
+            packs_vendidos: 0,
           }
         );
 
@@ -132,11 +136,13 @@ const Ranking = () => {
           },
           cross_selling: metrics.cross_selling,
           onboarding: metrics.onboarding,
+          packs_vendidos: metrics.packs_vendidos,
           position_vendas: 0,
           position_renovado_trimble: 0,
           position_renovado_chaos: 0,
           position_cross_selling: 0,
           position_onboarding: 0,
+          position_packs_vendidos: 0,
         };
       }) || [];
 
@@ -163,6 +169,7 @@ const Ranking = () => {
       rankedUsers = calculatePositions(rankedUsers, 'renovado_chaos');
       rankedUsers = calculatePositions(rankedUsers, 'cross_selling');
       rankedUsers = calculatePositions(rankedUsers, 'onboarding');
+      rankedUsers = calculatePositions(rankedUsers, 'packs_vendidos');
 
       setRankings(rankedUsers);
 
@@ -202,6 +209,8 @@ const Ranking = () => {
           return b.cross_selling - a.cross_selling;
         case "onboarding":
           return b.onboarding - a.onboarding;
+        case "packs_vendidos":
+          return b.packs_vendidos - a.packs_vendidos;
         default:
           return 0;
       }
@@ -248,6 +257,7 @@ const Ranking = () => {
       case 'renovado_chaos': return currentUser.position_renovado_chaos || 0;
       case 'cross_selling': return currentUser.position_cross_selling || 0;
       case 'onboarding': return currentUser.position_onboarding || 0;
+      case 'packs_vendidos': return currentUser.position_packs_vendidos || 0;
       default: return 0;
     }
   };
@@ -293,6 +303,7 @@ const Ranking = () => {
               <SelectItem value="renovado_chaos">% Renovado Chaos</SelectItem>
               <SelectItem value="cross_selling">Cross Selling</SelectItem>
               <SelectItem value="onboarding">Onboarding</SelectItem>
+              <SelectItem value="packs_vendidos">Packs Vendidos</SelectItem>
             </SelectContent>
           </Select>
         )}
@@ -341,6 +352,7 @@ const Ranking = () => {
                         {sortBy === 'renovado_chaos' && `${user.renovado_chaos.percent.toFixed(1)}%`}
                         {sortBy === 'cross_selling' && user.cross_selling}
                         {sortBy === 'onboarding' && user.onboarding}
+                        {sortBy === 'packs_vendidos' && user.packs_vendidos}
                       </p>
                     </div>
                   </div>
@@ -395,6 +407,16 @@ const Ranking = () => {
                   </div>
                   <Badge className={getPositionBadge(getCurrentUserPosition('onboarding'))}>
                     #{getCurrentUserPosition('onboarding')}
+                  </Badge>
+                </div>
+
+                <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-green-500" />
+                    <span className="text-sm font-medium">Packs Vendidos</span>
+                  </div>
+                  <Badge className={getPositionBadge(getCurrentUserPosition('packs_vendidos'))}>
+                    #{getCurrentUserPosition('packs_vendidos')}
                   </Badge>
                 </div>
 
@@ -455,7 +477,7 @@ const Ranking = () => {
 
                   <div className="flex-1">
                     <h3 className="font-medium">{user.name}</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mt-2 text-sm text-muted-foreground">
+                    <div className="grid grid-cols-2 sm:grid-cols-6 gap-4 mt-2 text-sm text-muted-foreground">
                       <div>
                         <span className="block text-xs">Vendas</span>
                         <span className="font-medium text-foreground">
@@ -484,6 +506,12 @@ const Ranking = () => {
                         <span className="block text-xs">Onboarding</span>
                         <span className="font-medium text-foreground">
                           {user.onboarding}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="block text-xs">Packs Vendidos</span>
+                        <span className="font-medium text-foreground">
+                          {user.packs_vendidos}
                         </span>
                       </div>
                     </div>

@@ -31,6 +31,7 @@ interface DashboardData {
   churn: number;
   onboarding: number;
   crossSelling: number;
+  packsVendidos: number;
 }
 
 interface ChartData {
@@ -53,6 +54,7 @@ const Dashboard = () => {
     churn: 0,
     onboarding: 0,
     crossSelling: 0,
+    packsVendidos: 0,
   });
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [showDaylinAlert, setShowDaylinAlert] = useState(false);
@@ -163,6 +165,7 @@ const Dashboard = () => {
           acc.forecast += report.forecast_amount || 0;
           acc.onboarding += report.onboarding || 0;
           acc.crossSelling += report.cross_selling || 0;
+          acc.packsVendidos += report.packs_vendidos || 0;
 
           // Filter by product if needed
           if (product === "TRIMBLE" || product === "TODOS") {
@@ -183,6 +186,7 @@ const Dashboard = () => {
           renovadoQty: 0,
           onboarding: 0,
           crossSelling: 0,
+          packsVendidos: 0,
         }
       ) || {
         vendasTotais: 0,
@@ -191,6 +195,7 @@ const Dashboard = () => {
         renovadoQty: 0,
         onboarding: 0,
         crossSelling: 0,
+        packsVendidos: 0,
       };
 
       const renovadoPercent = totals.licencasRenovar > 0 
@@ -423,6 +428,16 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.crossSelling}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="card-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">📦 Packs Vendidos</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.packsVendidos}</div>
           </CardContent>
         </Card>
       </div>
