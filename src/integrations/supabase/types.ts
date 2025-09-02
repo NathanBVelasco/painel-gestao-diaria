@@ -175,6 +175,30 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_access_log: {
+        Row: {
+          access_type: string
+          accessed_at: string | null
+          accessed_by: string
+          accessed_profile: string
+          id: string
+        }
+        Insert: {
+          access_type: string
+          accessed_at?: string | null
+          accessed_by: string
+          accessed_profile: string
+          id?: string
+        }
+        Update: {
+          access_type?: string
+          accessed_at?: string | null
+          accessed_by?: string
+          accessed_profile?: string
+          id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -237,7 +261,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      team_members: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          name: string | null
+          role: Database["public"]["Enums"]["user_role"] | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_current_user_role: {
@@ -247,6 +294,10 @@ export type Database = {
       is_gestor: {
         Args: { user_id: string }
         Returns: boolean
+      }
+      log_profile_access: {
+        Args: { access_type: string; profile_id: string }
+        Returns: undefined
       }
     }
     Enums: {
