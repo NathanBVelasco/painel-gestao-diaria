@@ -84,20 +84,26 @@ export function AppSidebar() {
                      <NavLink
                        to={item.href}
                        className={({ isActive }) =>
-                         `flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium relative ${
+                         `flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium relative overflow-visible ${
                            isActive
                              ? "bg-primary text-black shadow-sm"
                              : "text-gray-900 dark:text-gray-100 hover:bg-orange-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
                          }`
                        }
                     >
-                      <span className="text-lg">{item.emoji}</span>
+                      <span className="text-lg relative">
+                        {item.emoji}
+                        {item.name === "Prêmios" && activePrizesCount > 0 && (
+                          <span className={`absolute bg-red-500 text-white text-xs rounded-full min-w-5 h-5 flex items-center justify-center font-bold px-1 ${
+                            isCollapsed 
+                              ? "-top-2 -right-2 z-10" 
+                              : "-top-2 -right-3 z-10"
+                          }`}>
+                            {activePrizesCount > 99 ? '99+' : activePrizesCount}
+                          </span>
+                        )}
+                      </span>
                       {!isCollapsed && <span>{item.name}</span>}
-                      {item.name === "Prêmios" && activePrizesCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                          {activePrizesCount}
-                        </span>
-                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
