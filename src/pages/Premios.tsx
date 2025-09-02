@@ -1182,21 +1182,69 @@ const Premios = () => {
                        </div>
                      </div>
 
-                    {prize.achievement && (
-                      <div className="mt-3 pt-3 border-t">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-muted-foreground">Progresso:</span>
-                          <span className="text-sm font-medium">{prize.achievement.progress}%</span>
-                        </div>
-                        <Progress value={prize.achievement.progress} className="h-2" />
-                        {prize.achievement.achieved_at && (
-                          <div className="mt-2 flex items-center gap-2 text-success text-sm">
-                            <Star className="h-3 w-3" />
-                            <span>Conquistado em {new Date(prize.achievement.achieved_at).toLocaleDateString('pt-BR')}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                     {prize.achievement && (
+                       <div className="mt-3 pt-3 border-t">
+                         <div className="flex justify-between items-center mb-2">
+                           <span className="text-sm text-muted-foreground">Progresso:</span>
+                           <span className="text-sm font-medium">{prize.achievement.progress}%</span>
+                         </div>
+                         <Progress value={prize.achievement.progress} className="h-2" />
+                         {prize.achievement.achieved_at && (
+                           <div className="mt-2 flex items-center gap-2 text-success text-sm">
+                             <Star className="h-3 w-3" />
+                             <span>Conquistado em {new Date(prize.achievement.achieved_at).toLocaleDateString('pt-BR')}</span>
+                           </div>
+                         )}
+                       </div>
+                     )}
+
+                     {/* Team Progress for Gestors */}
+                     {isGestor && (
+                       <div className="mt-3 pt-3 border-t">
+                         <div className="flex items-center justify-between mb-2">
+                           <span className="text-sm text-muted-foreground flex items-center gap-1">
+                             <Users className="h-3 w-3" />
+                             Progresso da Equipe:
+                           </span>
+                           <span className="text-xs text-muted-foreground">
+                             {allUsersProgress.filter(p => p.prizeId === prize.id && p.isAchieved).length}/
+                             {allUsersProgress.filter(p => p.prizeId === prize.id).length} concluídos
+                           </span>
+                         </div>
+                         
+                         <div className="grid grid-cols-2 gap-2">
+                           {allUsersProgress
+                             .filter(p => p.prizeId === prize.id)
+                             .slice(0, 4)
+                             .map((userProgress) => (
+                               <div 
+                                 key={userProgress.userId}
+                                 className="flex items-center justify-between text-xs p-2 rounded border bg-muted/30"
+                               >
+                                 <span className="font-medium truncate mr-2" title={userProgress.userName}>
+                                   {userProgress.userName.split(' ')[0]}
+                                 </span>
+                                 <div className="flex items-center gap-1">
+                                   {userProgress.isAchieved && (
+                                     <CheckCircle className="h-3 w-3 text-success" />
+                                   )}
+                                   <span className={userProgress.isAchieved ? 'text-success font-medium' : ''}>
+                                     {userProgress.progress}%
+                                   </span>
+                                 </div>
+                               </div>
+                             ))}
+                         </div>
+                         
+                         {allUsersProgress.filter(p => p.prizeId === prize.id).length > 4 && (
+                           <div className="mt-2 text-center">
+                             <span className="text-xs text-muted-foreground">
+                               +{allUsersProgress.filter(p => p.prizeId === prize.id).length - 4} vendedores
+                             </span>
+                           </div>
+                         )}
+                       </div>
+                     )}
                   </div>
                 ))}
               </div>
