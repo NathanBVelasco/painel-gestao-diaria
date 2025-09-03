@@ -53,35 +53,36 @@ const Ranking = () => {
 
     setLoading(true);
     try {
-      // Get all profiles (if gestor) or just current user
-      // Use secure approach to exclude specific gestor without exposing emails
+      // Get all team profiles for ranking calculations
+      // Now all users can see basic team member info for ranking
       let profiles;
       
-      if (isGestor) {
-        // For gestors, use the secure function that excludes the system user
-        try {
+      try {
+        // First try to use the secure function for gestors
+        if (isGestor) {
           const { data, error } = await supabase.rpc('get_team_profiles_for_gestor');
           if (error) throw error;
           profiles = data;
-        } catch (error) {
-          console.error('Error fetching team profiles:', error);
-          // Fallback to regular query if function fails
-          const { data, error: fallbackError } = await supabase
+        } else {
+          // For regular users, get all team profiles (now allowed by RLS)
+          // excluding the system user and including themselves
+          const { data, error } = await supabase
             .from("profiles")
             .select("user_id, name")
-            .neq("user_id", profile.user_id); // Just exclude current user
+            .neq("email", "vendas19@totalcad.com.br"); // Exclude system user
           
-          if (fallbackError) throw fallbackError;
+          if (error) throw error;
           profiles = data;
         }
-      } else {
-        // For regular users, just get their own profile
-        const { data, error } = await supabase
+      } catch (error) {
+        console.error('Error fetching team profiles:', error);
+        // Fallback to regular query if function fails
+        const { data, error: fallbackError } = await supabase
           .from("profiles")
           .select("user_id, name")
-          .eq("user_id", profile.user_id);
+          .neq("email", "vendas19@totalcad.com.br"); // Exclude system user
         
-        if (error) throw error;
+        if (fallbackError) throw fallbackError;
         profiles = data;
       }
 
