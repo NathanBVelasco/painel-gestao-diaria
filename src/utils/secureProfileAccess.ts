@@ -22,6 +22,27 @@ export const getTeamProfilesForGestor = async () => {
 };
 
 /**
+ * Securely get basic team info for ranking and general purposes
+ * This function uses a database function that only returns safe fields (no emails)
+ * Available to all authenticated users
+ */
+export const getBasicTeamInfo = async () => {
+  try {
+    const { data, error } = await supabase.rpc('get_basic_team_info');
+    
+    if (error) {
+      console.error('Error fetching basic team info:', error);
+      throw error;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Security error in getBasicTeamInfo:', error);
+    throw new Error('Failed to fetch team information');
+  }
+};
+
+/**
  * Get only public profile information (name and role) for a specific user
  * Used when gestors need basic info about team members
  */

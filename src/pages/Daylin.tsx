@@ -231,11 +231,8 @@ const Daylin = () => {
     try {
       const queryDate = date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
       
-      // Get all sellers (vendedor role)
-      const { data: sellers, error: sellersError } = await supabase
-        .from("profiles")
-        .select("id, name, user_id")
-        .eq("role", "vendedor");
+      // Get all sellers (vendedor role) using secure function
+      const { data: sellers, error: sellersError } = await supabase.rpc('get_basic_team_info');
 
       if (sellersError) {
         console.error("Error loading sellers:", sellersError);
@@ -263,11 +260,11 @@ const Daylin = () => {
         return;
       }
 
-      // Combine sellers with their reports
+      // Combine sellers with their reports (map seller data correctly)
       const sellersWithStatus: SellerDaylinStatus[] = sellers?.map(seller => {
         const report = reports?.find(r => r.user_id === seller.user_id);
         return {
-          id: seller.id,
+          id: seller.user_id, // Use user_id as id for consistency
           name: seller.name,
           user_id: seller.user_id,
           report_id: report?.id,
@@ -307,11 +304,8 @@ const Daylin = () => {
       const firstDayOfMonth = new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0];
       const lastDayOfMonth = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
       
-      // Get all sellers
-      const { data: sellers, error: sellersError } = await supabase
-        .from("profiles")
-        .select("id, name, user_id")
-        .eq("role", "vendedor");
+      // Get all sellers using secure function
+      const { data: sellers, error: sellersError } = await supabase.rpc('get_basic_team_info');
 
       if (sellersError) {
         console.error("Error loading sellers:", sellersError);
@@ -343,7 +337,7 @@ const Daylin = () => {
         return;
       }
 
-      // Combine data
+      // Combine data (map seller data correctly)
       const sellersWithTargets: SellerWithTarget[] = sellers?.map(seller => {
         const target = targets?.find(t => t.user_id === seller.user_id);
         const sellerSales = monthSales?.filter(s => s.user_id === seller.user_id) || [];
@@ -351,7 +345,7 @@ const Daylin = () => {
         const progress = target?.target_amount ? (currentSales / target.target_amount) * 100 : 0;
 
         return {
-          id: seller.id,
+          id: seller.user_id, // Use user_id as id for consistency
           name: seller.name,
           user_id: seller.user_id,
           target,

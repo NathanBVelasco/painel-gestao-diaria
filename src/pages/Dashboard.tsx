@@ -118,10 +118,7 @@ const Dashboard = () => {
 
   const loadSellers = async () => {
     try {
-      const { data: profiles, error } = await supabase
-        .from("profiles")
-        .select("user_id, name")
-        .eq("role", "vendedor");
+      const { data: profiles, error } = await supabase.rpc('get_basic_team_info');
 
       if (error) {
         console.error("Error loading sellers:", error);

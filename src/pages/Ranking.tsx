@@ -63,11 +63,8 @@ const Ranking = () => {
           profiles = data;
         } catch (error) {
           console.error('Error fetching team profiles:', error);
-          // Fallback to regular query if function fails
-          const { data, error: fallbackError } = await supabase
-            .from("profiles")
-            .select("user_id, name")
-            .neq("email", "vendas19@totalcad.com.br"); // Exclude system user
+          // Fallback to secure function if gestor function fails
+          const { data, error: fallbackError } = await supabase.rpc('get_basic_team_info');
           
           if (fallbackError) throw fallbackError;
           profiles = data;
