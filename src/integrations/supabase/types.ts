@@ -438,9 +438,54 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      ai_software_basic_info: {
+        Row: {
+          category: Database["public"]["Enums"]["software_category"] | null
+          created_at: string | null
+          description: string | null
+          differentials: string | null
+          id: string | null
+          integration_benefits: string | null
+          is_active: boolean | null
+          software_name: string | null
+          target_audience: string | null
+          updated_at: string | null
+          use_cases: string | null
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["software_category"] | null
+          created_at?: string | null
+          description?: string | null
+          differentials?: string | null
+          id?: string | null
+          integration_benefits?: string | null
+          is_active?: boolean | null
+          software_name?: string | null
+          target_audience?: string | null
+          updated_at?: string | null
+          use_cases?: string | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["software_category"] | null
+          created_at?: string | null
+          description?: string | null
+          differentials?: string | null
+          id?: string | null
+          integration_benefits?: string | null
+          is_active?: boolean | null
+          software_name?: string | null
+          target_audience?: string | null
+          updated_at?: string | null
+          use_cases?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      can_access_sensitive_business_data: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
