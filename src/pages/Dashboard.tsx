@@ -544,7 +544,7 @@ const Dashboard = () => {
 
       // Apply user filter based on role
       if (profile?.role === "gestor") {
-        if (selectedSeller) {
+        if (selectedSeller && selectedSeller !== "TODOS") {
           // Specific seller selected
           query = query.eq("user_id", selectedSeller);
         }
