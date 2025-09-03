@@ -21,7 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 
-type Period = "HOJE" | "ONTEM" | "SEMANAL" | "MENSAL" | "TRIMESTRAL";
+type Period = "HOJE" | "SEMANAL" | "MENSAL";
 type Product = "TRIMBLE" | "CHAOS" | "TODOS";
 
 interface DashboardData {
@@ -175,10 +175,6 @@ const Dashboard = () => {
         case "HOJE":
           startDate = new Date(today.toISOString().split('T')[0]);
           break;
-        case "ONTEM":
-          startDate = new Date(today);
-          startDate.setDate(today.getDate() - 1);
-          break;
         case "SEMANAL":
           startDate = new Date(today);
           const dayOfWeek = today.getDay();
@@ -187,9 +183,6 @@ const Dashboard = () => {
           break;
         case "MENSAL":
           startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-          break;
-        case "TRIMESTRAL":
-          startDate = new Date(today.getFullYear(), today.getMonth() - 3, 1);
           break;
       }
 
@@ -206,56 +199,123 @@ const Dashboard = () => {
         return;
       }
 
-      // Calculate period-based metrics for licenses (based on selected period filter)
-      const periodTotals = reports?.reduce(
-        (acc, report) => {
+      // Calculate license metrics based on special logic:
+      // For "HOJE" and "SEMANAL": use current week data
+      // For "MENSAL": use monthly data
+      let licensePeriodTotals = { licencasRenovar: 0, renovadoQty: 0 };
+      
+      if (period === "HOJE" || period === "SEMANAL") {
+        // Get current week data (Monday to today)
+        const currentWeekReports = reports?.filter(report => {
+          const reportDate = new Date(report.date);
+          const mondayOfCurrentWeek = new Date(today);
+          const dayOfWeek = today.getDay();
+          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+          mondayOfCurrentWeek.setDate(today.getDate() - daysToMonday);
+          
+          return reportDate >= mondayOfCurrentWeek;
+        }) || [];
+
+        // Get Monday report for "licencas a renovar"
+        const mondayReport = currentWeekReports.find(report => {
+          const reportDate = new Date(report.date);
+          return reportDate.getDay() === 1;
+        });
+        
+        // Get latest report for "renovado"
+        const latestReport = currentWeekReports
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+        if (mondayReport) {
           if (product === "TRIMBLE" || product === "TODOS") {
-            acc.licencasRenovar += report.sketchup_to_renew || 0;
-            acc.renovadoQty += report.sketchup_renewed || 0;
+            licensePeriodTotals.licencasRenovar += mondayReport.sketchup_to_renew || 0;
           }
           if (product === "CHAOS" || product === "TODOS") {
-            acc.licencasRenovar += report.chaos_to_renew || 0;
-            acc.renovadoQty += report.chaos_renewed || 0;
+            licensePeriodTotals.licencasRenovar += mondayReport.chaos_to_renew || 0;
           }
-          return acc;
-        },
-        { licencasRenovar: 0, renovadoQty: 0 }
-      ) || { licencasRenovar: 0, renovadoQty: 0 };
+        }
 
-      const currentRenovadoPercent = periodTotals.licencasRenovar > 0 
-        ? (periodTotals.renovadoQty / periodTotals.licencasRenovar) * 100 
+        if (latestReport) {
+          if (product === "TRIMBLE" || product === "TODOS") {
+            licensePeriodTotals.renovadoQty = latestReport.sketchup_renewed || 0;
+          }
+          if (product === "CHAOS" || product === "TODOS") {
+            licensePeriodTotals.renovadoQty += latestReport.chaos_renewed || 0;
+          }
+        }
+
+      } else if (period === "MENSAL") {
+        // For monthly: aggregate weekly data from current month
+        const weeks = new Map();
+        
+        reports?.forEach(report => {
+          const reportDate = new Date(report.date);
+          const mondayOfWeek = new Date(reportDate);
+          const dayOfWeek = reportDate.getDay();
+          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+          mondayOfWeek.setDate(reportDate.getDate() - daysToMonday);
+          const weekKey = mondayOfWeek.toISOString().split('T')[0];
+          
+          if (!weeks.has(weekKey)) {
+            weeks.set(weekKey, { reports: [] });
+          }
+          weeks.get(weekKey).reports.push(report);
+        });
+
+        // Process each week
+        weeks.forEach((weekData) => {
+          const weekReports = weekData.reports;
+          
+          // Get Monday report for "licencas a renovar"
+          const mondayReport = weekReports.find(report => {
+            const reportDate = new Date(report.date);
+            return reportDate.getDay() === 1;
+          });
+          
+          // Get latest report for "renovado"
+          const latestReport = weekReports
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+          
+          if (mondayReport) {
+            if (product === "TRIMBLE" || product === "TODOS") {
+              licensePeriodTotals.licencasRenovar += mondayReport.sketchup_to_renew || 0;
+            }
+            if (product === "CHAOS" || product === "TODOS") {
+              licensePeriodTotals.licencasRenovar += mondayReport.chaos_to_renew || 0;
+            }
+          }
+          
+          if (latestReport) {
+            if (product === "TRIMBLE" || product === "TODOS") {
+              licensePeriodTotals.renovadoQty += latestReport.sketchup_renewed || 0;
+            }
+            if (product === "CHAOS" || product === "TODOS") {
+              licensePeriodTotals.renovadoQty += latestReport.chaos_renewed || 0;
+            }
+          }
+        });
+      }
+
+      const currentRenovadoPercent = licensePeriodTotals.licencasRenovar > 0 
+        ? (licensePeriodTotals.renovadoQty / licensePeriodTotals.licencasRenovar) * 100 
         : 0;
 
       // Calculate previous period for trend comparison
       let previousStartDate = new Date();
       let previousEndDate = new Date();
 
-      switch (period) {
-        case "HOJE":
-          previousStartDate = new Date(today);
-          previousStartDate.setDate(today.getDate() - 1);
-          previousEndDate = new Date(previousStartDate);
-          break;
-        case "ONTEM":
-          previousStartDate = new Date(today);
-          previousStartDate.setDate(today.getDate() - 2);
-          previousEndDate = new Date(today);
-          previousEndDate.setDate(today.getDate() - 2);
-          break;
-        case "SEMANAL":
-          previousStartDate = new Date(startDate);
-          previousStartDate.setDate(startDate.getDate() - 7);
-          previousEndDate = new Date(startDate);
-          previousEndDate.setDate(startDate.getDate() - 1);
-          break;
-        case "MENSAL":
-          previousStartDate = new Date(startDate.getFullYear(), startDate.getMonth() - 1, 1);
-          previousEndDate = new Date(startDate.getFullYear(), startDate.getMonth(), 0);
-          break;
-        case "TRIMESTRAL":
-          previousStartDate = new Date(startDate.getFullYear(), startDate.getMonth() - 3, 1);
-          previousEndDate = new Date(startDate.getFullYear(), startDate.getMonth(), 0);
-          break;
+      if (period === "HOJE" || period === "SEMANAL") {
+        // Compare with previous week
+        previousStartDate = new Date(today);
+        const dayOfWeek = today.getDay();
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        previousStartDate.setDate(today.getDate() - daysToMonday - 7);
+        previousEndDate = new Date(previousStartDate);
+        previousEndDate.setDate(previousStartDate.getDate() + 6);
+      } else if (period === "MENSAL") {
+        // Compare with previous month
+        previousStartDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        previousEndDate = new Date(today.getFullYear(), today.getMonth(), 0);
       }
 
       // Query for previous period data
@@ -272,23 +332,12 @@ const Dashboard = () => {
 
       const { data: previousReports } = await previousQuery;
 
-      // Calculate previous period for trend comparison (using same weekly logic)
+      // Calculate previous period for trend comparison
       let previousTotals = { licencasRenovar: 0, renovadoQty: 0 };
       
-      if (period === "HOJE" || period === "ONTEM" || period === "SEMANAL") {
-        // For daily/weekly filters, compare with previous week
-        const previousWeekReports = previousReports?.filter(report => {
-          const reportDate = new Date(report.date);
-          const today = new Date();
-          const mondayOfPreviousWeek = new Date(today);
-          const dayOfWeek = today.getDay();
-          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-          mondayOfPreviousWeek.setDate(today.getDate() - daysToMonday - 7);
-          const fridayOfPreviousWeek = new Date(mondayOfPreviousWeek);
-          fridayOfPreviousWeek.setDate(mondayOfPreviousWeek.getDate() + 4);
-          
-          return reportDate >= mondayOfPreviousWeek && reportDate <= fridayOfPreviousWeek;
-        }) || [];
+      if (period === "HOJE" || period === "SEMANAL") {
+        // For current week filters, compare with previous week
+        const previousWeekReports = previousReports || [];
 
         // Get Monday report for "licencas a renovar"
         const mondayReport = previousWeekReports.find(report => {
@@ -318,8 +367,8 @@ const Dashboard = () => {
           }
         }
 
-      } else {
-        // For MENSAL and TRIMESTRAL, aggregate weekly data from previous period
+      } else if (period === "MENSAL") {
+        // For monthly filter, aggregate weekly data from previous month
         const weeks = new Map();
         
         previousReports?.forEach(report => {
@@ -404,10 +453,10 @@ const Dashboard = () => {
 
       setData({
         ...totals,
-        licencasRenovar: periodTotals.licencasRenovar,
+        licencasRenovar: licensePeriodTotals.licencasRenovar,
         renovado: {
           percent: currentRenovadoPercent,
-          quantity: periodTotals.renovadoQty,
+          quantity: licensePeriodTotals.renovadoQty,
           trend: trendPercent,
         },
         churn: 100 - currentRenovadoPercent,
@@ -532,10 +581,8 @@ const Dashboard = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="HOJE">Hoje</SelectItem>
-              <SelectItem value="ONTEM">Ontem</SelectItem>
               <SelectItem value="SEMANAL">Semanal</SelectItem>
               <SelectItem value="MENSAL">Mensal</SelectItem>
-              <SelectItem value="TRIMESTRAL">Trimestral</SelectItem>
             </SelectContent>
           </Select>
 
