@@ -76,10 +76,10 @@ export function AIExpertiseConfig() {
 
   const loadSoftwareKnowledge = async () => {
     try {
+      // Use the secure view that only exposes non-sensitive fields
       const { data, error } = await supabase
-        .from("ai_software_knowledge")
+        .from("ai_software_basic_info")
         .select("software_name, category, description, differentials, target_audience")
-        .eq("is_active", true)
         .order("software_name");
 
       if (error) throw error;
