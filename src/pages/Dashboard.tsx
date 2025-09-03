@@ -200,31 +200,44 @@ const Dashboard = () => {
       }
 
       // Calculate license metrics based on special logic:
-      // For "HOJE" and "SEMANAL": use current week data
-      // For "MENSAL": use monthly data
+      // These metrics need their own queries independent of the main period filter
       let licensePeriodTotals = { licencasRenovar: 0, renovadoQty: 0 };
       
-      if (period === "HOJE" || period === "SEMANAL") {
-        // Get current week data (Monday to today)
-        const currentWeekReports = reports?.filter(report => {
-          const reportDate = new Date(report.date);
-          const mondayOfCurrentWeek = new Date(today);
-          const dayOfWeek = today.getDay();
-          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-          mondayOfCurrentWeek.setDate(today.getDate() - daysToMonday);
-          
-          return reportDate >= mondayOfCurrentWeek;
-        }) || [];
+      // For license metrics, we need to query the appropriate period regardless of main filter
+      let licenseQuery = supabase.from("daily_reports").select("*");
+      
+      // Filter by user if not gestor or if gestor selected specific seller
+      if (!isGestor) {
+        licenseQuery = licenseQuery.eq("user_id", profile.user_id);
+      } else if (selectedSeller !== "TODOS") {
+        licenseQuery = licenseQuery.eq("user_id", selectedSeller);
+      }
 
+      let licenseStartDate = new Date();
+      
+      if (period === "HOJE" || period === "SEMANAL") {
+        // For HOJE and SEMANAL: get current week data (Monday to today)
+        const dayOfWeek = today.getDay();
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        licenseStartDate.setDate(today.getDate() - daysToMonday);
+      } else if (period === "MENSAL") {
+        // For MENSAL: get current month data
+        licenseStartDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      }
+
+      licenseQuery = licenseQuery.gte("date", licenseStartDate.toISOString().split('T')[0]);
+      const { data: licenseReports } = await licenseQuery;
+
+      if (period === "HOJE" || period === "SEMANAL") {
         // Get Monday report for "licencas a renovar"
-        const mondayReport = currentWeekReports.find(report => {
+        const mondayReport = licenseReports?.find(report => {
           const reportDate = new Date(report.date);
           return reportDate.getDay() === 1;
         });
         
-        // Get latest report for "renovado"
-        const latestReport = currentWeekReports
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+        // Get latest report for "renovado" 
+        const latestReport = licenseReports
+          ?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
         if (mondayReport) {
           if (product === "TRIMBLE" || product === "TODOS") {
@@ -248,7 +261,7 @@ const Dashboard = () => {
         // For monthly: aggregate weekly data from current month
         const weeks = new Map();
         
-        reports?.forEach(report => {
+        licenseReports?.forEach(report => {
           const reportDate = new Date(report.date);
           const mondayOfWeek = new Date(reportDate);
           const dayOfWeek = reportDate.getDay();
