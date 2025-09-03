@@ -206,16 +206,27 @@ const Dashboard = () => {
         return;
       }
 
-      // Calculate dashboard metrics
-      const totals = reports?.reduce(
-        (acc, report) => {
-          acc.vendasTotais += report.sales_amount || 0;
-          acc.forecast += report.forecast_amount || 0;
-          acc.onboarding += report.onboarding || 0;
-          acc.crossSelling += report.cross_selling || 0;
-          acc.packsVendidos += report.packs_vendidos || 0;
+      // Calculate weekly metrics separately (always current week regardless of period filter)
+      let weeklyQuery = supabase.from("daily_reports").select("*");
+      
+      if (!isGestor) {
+        weeklyQuery = weeklyQuery.eq("user_id", profile.user_id);
+      } else if (selectedSeller !== "TODOS") {
+        weeklyQuery = weeklyQuery.eq("user_id", selectedSeller);
+      }
 
-          // Filter by product if needed
+      const weekStartDate = new Date(today);
+      const dayOfWeek = today.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      weekStartDate.setDate(today.getDate() - daysToMonday);
+
+      weeklyQuery = weeklyQuery.gte("date", weekStartDate.toISOString().split('T')[0]);
+
+      const { data: weeklyReports } = await weeklyQuery;
+
+      // Calculate weekly totals for licenses metrics
+      const weeklyTotals = weeklyReports?.reduce(
+        (acc, report) => {
           if (product === "TRIMBLE" || product === "TODOS") {
             acc.licencasRenovar += report.sketchup_to_renew || 0;
             acc.renovadoQty += report.sketchup_renewed || 0;
@@ -224,14 +235,28 @@ const Dashboard = () => {
             acc.licencasRenovar += report.chaos_to_renew || 0;
             acc.renovadoQty += report.chaos_renewed || 0;
           }
+          return acc;
+        },
+        { licencasRenovar: 0, renovadoQty: 0 }
+      ) || { licencasRenovar: 0, renovadoQty: 0 };
 
+      const weeklyRenovadoPercent = weeklyTotals.licencasRenovar > 0 
+        ? (weeklyTotals.renovadoQty / weeklyTotals.licencasRenovar) * 100 
+        : 0;
+
+      // Calculate other metrics based on selected period
+      const totals = reports?.reduce(
+        (acc, report) => {
+          acc.vendasTotais += report.sales_amount || 0;
+          acc.forecast += report.forecast_amount || 0;
+          acc.onboarding += report.onboarding || 0;
+          acc.crossSelling += report.cross_selling || 0;
+          acc.packsVendidos += report.packs_vendidos || 0;
           return acc;
         },
         {
           vendasTotais: 0,
           forecast: 0,
-          licencasRenovar: 0,
-          renovadoQty: 0,
           onboarding: 0,
           crossSelling: 0,
           packsVendidos: 0,
@@ -239,24 +264,19 @@ const Dashboard = () => {
       ) || {
         vendasTotais: 0,
         forecast: 0,
-        licencasRenovar: 0,
-        renovadoQty: 0,
         onboarding: 0,
         crossSelling: 0,
         packsVendidos: 0,
       };
 
-      const renovadoPercent = totals.licencasRenovar > 0 
-        ? (totals.renovadoQty / totals.licencasRenovar) * 100 
-        : 0;
-
       setData({
         ...totals,
+        licencasRenovar: weeklyTotals.licencasRenovar,
         renovado: {
-          percent: renovadoPercent,
-          quantity: totals.renovadoQty,
+          percent: weeklyRenovadoPercent,
+          quantity: weeklyTotals.renovadoQty,
         },
-        churn: 100 - renovadoPercent,
+        churn: 100 - weeklyRenovadoPercent,
       });
 
       // Generate chart data for last 5 business days
@@ -481,7 +501,7 @@ const Dashboard = () => {
 
         <Card className="card-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">🗓️ Nº Licenças a Renovar (Semana)</CardTitle>
+            <CardTitle className="text-sm font-medium">🗓️ Nº Licenças a Renovar</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -491,7 +511,7 @@ const Dashboard = () => {
 
         <Card className="card-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">✅ Renovado (Semana)</CardTitle>
+            <CardTitle className="text-sm font-medium">✅ Renovado</CardTitle>
             <CheckCircle className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
@@ -506,7 +526,7 @@ const Dashboard = () => {
 
         <Card className="card-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">❌ Churn (Semana)</CardTitle>
+            <CardTitle className="text-sm font-medium">❌ Churn</CardTitle>
             <XCircle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
