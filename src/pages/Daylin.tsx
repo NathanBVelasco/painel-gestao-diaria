@@ -19,8 +19,13 @@ import {
   Clock,
   Edit,
   Save,
-  X 
+  X,
+  CalendarIcon,
+  RotateCcw
 } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { subDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -97,6 +102,10 @@ const Daylin = () => {
   const [sellersStatus, setSellersStatus] = useState<SellerDaylinStatus[]>([]);
   const [gestorLoading, setGestorLoading] = useState(false);
   
+  // Date selection states for gestor
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  
   // Targets states for gestor
   const [sellersWithTargets, setSellersWithTargets] = useState<SellerWithTarget[]>([]);
   const [editingTarget, setEditingTarget] = useState<string | null>(null);
@@ -159,14 +168,14 @@ const Daylin = () => {
   useEffect(() => {
     if (isGestor) {
       setLoading(false); // Set loading false for gestor immediately
-      loadSellersStatus();
+      loadSellersStatus(selectedDate);
       loadSellersWithTargets();
     } else {
       loadTodayReport();
       loadWeeklyRenewalData();
       checkEndDayAlert();
     }
-  }, [profile, isGestor]);
+  }, [profile, isGestor, selectedDate]);
 
   const loadTodayReport = async () => {
     if (!profile) return;
@@ -215,12 +224,12 @@ const Daylin = () => {
     }
   };
 
-  const loadSellersStatus = async () => {
+  const loadSellersStatus = async (date?: Date) => {
     if (!profile || !isGestor) return;
 
     setGestorLoading(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const queryDate = date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
       
       // Get all sellers (vendedor role)
       const { data: sellers, error: sellersError } = await supabase
@@ -238,11 +247,11 @@ const Daylin = () => {
         return;
       }
 
-      // Get today's reports for all sellers
+      // Get reports for selected date
       const { data: reports, error: reportsError } = await supabase
         .from("daily_reports")
         .select("id, user_id, started_at, ended_at, mood, forecast_amount, sketchup_to_renew, chaos_to_renew, daily_strategy, difficulties, sketchup_renewed, chaos_renewed, sales_amount, cross_selling, onboarding, onboarding_details, packs_vendidos")
-        .eq("date", today);
+        .eq("date", queryDate);
 
       if (reportsError) {
         console.error("Error loading reports:", reportsError);
@@ -448,7 +457,7 @@ const Daylin = () => {
         description: "Os dados do Daylin foram atualizados com sucesso.",
       });
 
-      loadSellersStatus();
+      loadSellersStatus(selectedDate);
       setEditingReport(null);
       setEditReportForm({
         mood: "",
@@ -698,6 +707,87 @@ const Daylin = () => {
           </TabsList>
 
           <TabsContent value="status" className="space-y-6">
+            {/* Date Selector */}
+            <Card className="card-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarIcon className="h-5 w-5 text-primary" />
+                  📅 Selecionar Data
+                </CardTitle>
+                <CardDescription>
+                  Visualize dados de dias anteriores (últimos 90 dias)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4">
+                  <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-60 justify-start text-left font-normal"
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {selectedDate.toLocaleDateString('pt-BR', {
+                          weekday: 'long',
+                          year: 'numeric', 
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => {
+                          if (date) {
+                            setSelectedDate(date);
+                            setShowDatePicker(false);
+                          }
+                        }}
+                        disabled={(date) =>
+                          date > new Date() || date < subDays(new Date(), 90)
+                        }
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  
+                  {selectedDate.toDateString() !== new Date().toDateString() && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedDate(new Date())}
+                      className="flex items-center gap-2"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Voltar para Hoje
+                    </Button>
+                  )}
+                  
+                  <div className="text-sm text-muted-foreground">
+                    {selectedDate.toDateString() === new Date().toDateString() 
+                      ? "Visualizando dados de hoje" 
+                      : `Visualizando dados de ${selectedDate.toLocaleDateString('pt-BR')}`
+                    }
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Empty state for historical dates */}
+            {selectedDate.toDateString() !== new Date().toDateString() && 
+             sellersStatus.length === 0 && (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Não há dados registrados para {selectedDate.toLocaleDateString('pt-BR')}. 
+                  Selecione uma data diferente ou volte para hoje.
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Resumo Principal */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card className="border-warning/50 bg-warning/5">
