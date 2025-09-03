@@ -229,33 +229,28 @@ const Dashboard = () => {
       const { data: licenseReports } = await licenseQuery;
 
       if (period === "HOJE" || period === "SEMANAL") {
-        // Get Monday report for "licencas a renovar"
-        const mondayReport = licenseReports?.find(report => {
-          const reportDate = new Date(report.date);
-          return reportDate.getDay() === 1;
-        });
-        
-        // Get latest report for "renovado" 
-        const latestReport = licenseReports
+        // Get most recent report for "licencas a renovar" (instead of Monday only)
+        const mostRecentReport = licenseReports
           ?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-
-        if (mondayReport) {
+        
+        if (mostRecentReport) {
           if (product === "TRIMBLE" || product === "TODOS") {
-            licensePeriodTotals.licencasRenovar += mondayReport.sketchup_to_renew || 0;
+            licensePeriodTotals.licencasRenovar += mostRecentReport.sketchup_to_renew || 0;
           }
           if (product === "CHAOS" || product === "TODOS") {
-            licensePeriodTotals.licencasRenovar += mondayReport.chaos_to_renew || 0;
+            licensePeriodTotals.licencasRenovar += mostRecentReport.chaos_to_renew || 0;
           }
         }
 
-        if (latestReport) {
+        // Sum ALL reports for "renovado" (instead of just latest)
+        licenseReports?.forEach(report => {
           if (product === "TRIMBLE" || product === "TODOS") {
-            licensePeriodTotals.renovadoQty += latestReport.sketchup_renewed || 0;
+            licensePeriodTotals.renovadoQty += report.sketchup_renewed || 0;
           }
           if (product === "CHAOS" || product === "TODOS") {
-            licensePeriodTotals.renovadoQty += latestReport.chaos_renewed || 0;
+            licensePeriodTotals.renovadoQty += report.chaos_renewed || 0;
           }
-        }
+        });
 
       } else if (period === "MENSAL") {
         // For monthly: aggregate weekly data from current month
