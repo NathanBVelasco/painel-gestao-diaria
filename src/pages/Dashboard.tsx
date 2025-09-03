@@ -272,21 +272,103 @@ const Dashboard = () => {
 
       const { data: previousReports } = await previousQuery;
 
-      // Calculate previous period totals
-      const previousTotals = previousReports?.reduce(
-        (acc, report) => {
+      // Calculate previous period for trend comparison (using same weekly logic)
+      let previousTotals = { licencasRenovar: 0, renovadoQty: 0 };
+      
+      if (period === "HOJE" || period === "ONTEM" || period === "SEMANAL") {
+        // For daily/weekly filters, compare with previous week
+        const previousWeekReports = previousReports?.filter(report => {
+          const reportDate = new Date(report.date);
+          const today = new Date();
+          const mondayOfPreviousWeek = new Date(today);
+          const dayOfWeek = today.getDay();
+          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+          mondayOfPreviousWeek.setDate(today.getDate() - daysToMonday - 7);
+          const fridayOfPreviousWeek = new Date(mondayOfPreviousWeek);
+          fridayOfPreviousWeek.setDate(mondayOfPreviousWeek.getDate() + 4);
+          
+          return reportDate >= mondayOfPreviousWeek && reportDate <= fridayOfPreviousWeek;
+        }) || [];
+
+        // Get Monday report for "licencas a renovar"
+        const mondayReport = previousWeekReports.find(report => {
+          const reportDate = new Date(report.date);
+          return reportDate.getDay() === 1;
+        });
+        
+        // Get latest report for "renovado"
+        const latestReport = previousWeekReports
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+        if (mondayReport) {
           if (product === "TRIMBLE" || product === "TODOS") {
-            acc.licencasRenovar += report.sketchup_to_renew || 0;
-            acc.renovadoQty += report.sketchup_renewed || 0;
+            previousTotals.licencasRenovar += mondayReport.sketchup_to_renew || 0;
           }
           if (product === "CHAOS" || product === "TODOS") {
-            acc.licencasRenovar += report.chaos_to_renew || 0;
-            acc.renovadoQty += report.chaos_renewed || 0;
+            previousTotals.licencasRenovar += mondayReport.chaos_to_renew || 0;
           }
-          return acc;
-        },
-        { licencasRenovar: 0, renovadoQty: 0 }
-      ) || { licencasRenovar: 0, renovadoQty: 0 };
+        }
+
+        if (latestReport) {
+          if (product === "TRIMBLE" || product === "TODOS") {
+            previousTotals.renovadoQty = latestReport.sketchup_renewed || 0;
+          }
+          if (product === "CHAOS" || product === "TODOS") {
+            previousTotals.renovadoQty += latestReport.chaos_renewed || 0;
+          }
+        }
+
+      } else {
+        // For MENSAL and TRIMESTRAL, aggregate weekly data from previous period
+        const weeks = new Map();
+        
+        previousReports?.forEach(report => {
+          const reportDate = new Date(report.date);
+          const mondayOfWeek = new Date(reportDate);
+          const dayOfWeek = reportDate.getDay();
+          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+          mondayOfWeek.setDate(reportDate.getDate() - daysToMonday);
+          const weekKey = mondayOfWeek.toISOString().split('T')[0];
+          
+          if (!weeks.has(weekKey)) {
+            weeks.set(weekKey, { reports: [] });
+          }
+          weeks.get(weekKey).reports.push(report);
+        });
+
+        // Process each week
+        weeks.forEach((weekData) => {
+          const weekReports = weekData.reports;
+          
+          // Get Monday report for "licencas a renovar"
+          const mondayReport = weekReports.find(report => {
+            const reportDate = new Date(report.date);
+            return reportDate.getDay() === 1;
+          });
+          
+          // Get latest report for "renovado"
+          const latestReport = weekReports
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+          
+          if (mondayReport) {
+            if (product === "TRIMBLE" || product === "TODOS") {
+              previousTotals.licencasRenovar += mondayReport.sketchup_to_renew || 0;
+            }
+            if (product === "CHAOS" || product === "TODOS") {
+              previousTotals.licencasRenovar += mondayReport.chaos_to_renew || 0;
+            }
+          }
+          
+          if (latestReport) {
+            if (product === "TRIMBLE" || product === "TODOS") {
+              previousTotals.renovadoQty += latestReport.sketchup_renewed || 0;
+            }
+            if (product === "CHAOS" || product === "TODOS") {
+              previousTotals.renovadoQty += latestReport.chaos_renewed || 0;
+            }
+          }
+        });
+      }
 
       const previousRenovadoPercent = previousTotals.licencasRenovar > 0 
         ? (previousTotals.renovadoQty / previousTotals.licencasRenovar) * 100 
