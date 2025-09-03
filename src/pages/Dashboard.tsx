@@ -150,6 +150,21 @@ const Dashboard = () => {
     }
   };
 
+  // Helper function to find the last report with valid renovado values
+  const findLastValidRenovadoReport = (reports: any[]) => {
+    if (!reports || reports.length === 0) return null;
+    
+    const sortedReports = reports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    // Find the last report with non-zero renovado values
+    const validReport = sortedReports.find(report => 
+      (report.sketchup_renewed || 0) > 0 || (report.chaos_renewed || 0) > 0
+    );
+    
+    // If no valid report found, return the latest report as fallback
+    return validReport || sortedReports[0];
+  };
+
   const loadDashboardData = async () => {
     if (!profile) return;
 
@@ -282,17 +297,16 @@ const Dashboard = () => {
             }
           }
 
-          // Use accumulated total from latest report
+          // Use accumulated total from latest valid report
           if (licenseReports && licenseReports.length > 0) {
-            const sortedReports = licenseReports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            const latestReport = sortedReports[0];
+            const latestValidReport = findLastValidRenovadoReport(licenseReports);
             
-            if (latestReport) {
+            if (latestValidReport) {
               if (product === "TRIMBLE" || product === "TODOS") {
-                licensePeriodTotals.renovadoQty += latestReport.sketchup_renewed || 0;
+                licensePeriodTotals.renovadoQty += latestValidReport.sketchup_renewed || 0;
               }
               if (product === "CHAOS" || product === "TODOS") {
-                licensePeriodTotals.renovadoQty += latestReport.chaos_renewed || 0;
+                licensePeriodTotals.renovadoQty += latestValidReport.chaos_renewed || 0;
               }
             }
           }
@@ -318,15 +332,15 @@ const Dashboard = () => {
             }
           }
           
-          // Use accumulated total from latest report  
-          const latestReport = sortedReports[sortedReports.length - 1];
+          // Use accumulated total from latest valid report  
+          const latestValidReport = findLastValidRenovadoReport(sortedReports);
           
-          if (latestReport) {
+          if (latestValidReport) {
             if (product === "TRIMBLE" || product === "TODOS") {
-              licensePeriodTotals.renovadoQty += latestReport.sketchup_renewed || 0;
+              licensePeriodTotals.renovadoQty += latestValidReport.sketchup_renewed || 0;
             }
             if (product === "CHAOS" || product === "TODOS") {
-              licensePeriodTotals.renovadoQty += latestReport.chaos_renewed || 0;
+              licensePeriodTotals.renovadoQty += latestValidReport.chaos_renewed || 0;
             }
           }
         }
@@ -381,9 +395,8 @@ const Dashboard = () => {
           return reportDate.getDay() === 1;
         });
         
-        // Get latest report for "renovado"
-        const latestReport = previousWeekReports
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+        // Get latest valid report for "renovado"
+        const latestValidReport = findLastValidRenovadoReport(previousWeekReports);
 
         if (mondayReport) {
           if (product === "TRIMBLE" || product === "TODOS") {
@@ -394,13 +407,13 @@ const Dashboard = () => {
           }
         }
 
-        if (latestReport) {
-          // Use accumulated total from latest report of previous week
+        if (latestValidReport) {
+          // Use accumulated total from latest valid report of previous week
           if (product === "TRIMBLE" || product === "TODOS") {
-            previousTotals.renovadoQty += latestReport.sketchup_renewed || 0;
+            previousTotals.renovadoQty += latestValidReport.sketchup_renewed || 0;
           }
           if (product === "CHAOS" || product === "TODOS") {
-            previousTotals.renovadoQty += latestReport.chaos_renewed || 0;
+            previousTotals.renovadoQty += latestValidReport.chaos_renewed || 0;
           }
         }
 
@@ -427,15 +440,15 @@ const Dashboard = () => {
             }
           }
           
-          // Use accumulated total from latest report of previous month
-          const latestReport = lastReport;
+          // Use accumulated total from latest valid report of previous month
+          const latestValidReport = findLastValidRenovadoReport(sortedPreviousReports);
           
-          if (latestReport) {
+          if (latestValidReport) {
             if (product === "TRIMBLE" || product === "TODOS") {
-              previousTotals.renovadoQty += latestReport.sketchup_renewed || 0;
+              previousTotals.renovadoQty += latestValidReport.sketchup_renewed || 0;
             }
             if (product === "CHAOS" || product === "TODOS") {
-              previousTotals.renovadoQty += latestReport.chaos_renewed || 0;
+              previousTotals.renovadoQty += latestValidReport.chaos_renewed || 0;
             }
           }
         }
