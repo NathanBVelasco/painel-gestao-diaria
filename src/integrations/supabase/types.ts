@@ -354,6 +354,16 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_user_ranking_positions: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          cross_selling_position: number
+          onboarding_position: number
+          packs_position: number
+          renewals_position: number
+          sales_position: number
+        }[]
+      }
       is_gestor: {
         Args: { user_id: string }
         Returns: boolean

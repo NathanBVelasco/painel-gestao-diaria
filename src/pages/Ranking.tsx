@@ -53,72 +53,198 @@ const Ranking = () => {
 
     setLoading(true);
     try {
-      // Get all team profiles for ranking calculations
-      // Now all users can see basic team member info for ranking
-      let profiles;
-      
-      try {
-        // First try to use the secure function for gestors
-        if (isGestor) {
+      if (isGestor) {
+        // For managers: get full team data and calculate complete rankings
+        let profiles;
+        
+        try {
           const { data, error } = await supabase.rpc('get_team_profiles_for_gestor');
           if (error) throw error;
           profiles = data;
-        } else {
-          // For regular users, get all team profiles (now allowed by RLS)
-          // excluding the system user and including themselves
-          const { data, error } = await supabase
+        } catch (error) {
+          console.error('Error fetching team profiles:', error);
+          // Fallback to regular query if function fails
+          const { data, error: fallbackError } = await supabase
             .from("profiles")
             .select("user_id, name")
             .neq("email", "vendas19@totalcad.com.br"); // Exclude system user
           
-          if (error) throw error;
+          if (fallbackError) throw fallbackError;
           profiles = data;
         }
-      } catch (error) {
-        console.error('Error fetching team profiles:', error);
-        // Fallback to regular query if function fails
-        const { data, error: fallbackError } = await supabase
-          .from("profiles")
-          .select("user_id, name")
-          .neq("email", "vendas19@totalcad.com.br"); // Exclude system user
+
+        if (!profiles) {
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os perfis",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Get daily reports for the current month
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const { data: reports, error: reportsError } = await supabase
+          .from("daily_reports")
+          .select("*")
+          .gte("date", startOfMonth.toISOString().split('T')[0]);
+
+        if (reportsError) {
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os relatórios",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Calculate metrics for each user
+        const userMetrics = profiles?.map(profile => {
+          const userReports = reports?.filter(r => r.user_id === profile.user_id) || [];
+
+          const metrics = userReports.reduce(
+            (acc, report) => {
+              acc.vendas += report.sales_amount || 0;
+              acc.sketchup_to_renew += report.sketchup_to_renew || 0;
+              acc.sketchup_renewed += report.sketchup_renewed || 0;
+              acc.chaos_to_renew += report.chaos_to_renew || 0;
+              acc.chaos_renewed += report.chaos_renewed || 0;
+              acc.cross_selling += report.cross_selling || 0;
+              acc.onboarding += report.onboarding || 0;
+              acc.packs_vendidos += report.packs_vendidos || 0;
+              return acc;
+            },
+            {
+              vendas: 0,
+              sketchup_to_renew: 0,
+              sketchup_renewed: 0,
+              chaos_to_renew: 0,
+              chaos_renewed: 0,
+              cross_selling: 0,
+              onboarding: 0,
+              packs_vendidos: 0,
+            }
+          );
+
+          return {
+            user_id: profile.user_id,
+            name: profile.name,
+            vendas: metrics.vendas,
+            renovado_trimble: {
+              percent: metrics.sketchup_to_renew > 0 
+                ? (metrics.sketchup_renewed / metrics.sketchup_to_renew) * 100 
+                : 0,
+              quantity: metrics.sketchup_renewed,
+            },
+            renovado_chaos: {
+              percent: metrics.chaos_to_renew > 0 
+                ? (metrics.chaos_renewed / metrics.chaos_to_renew) * 100 
+                : 0,
+              quantity: metrics.chaos_renewed,
+            },
+            cross_selling: metrics.cross_selling,
+            onboarding: metrics.onboarding,
+            packs_vendidos: metrics.packs_vendidos,
+            position_vendas: 0,
+            position_renovado_trimble: 0,
+            position_renovado_chaos: 0,
+            position_cross_selling: 0,
+            position_onboarding: 0,
+            position_packs_vendidos: 0,
+          };
+        }) || [];
+
+        // Calculate positions for each metric
+        const calculatePositions = (users: any[], key: string) => {
+          const getValue = (user: any) => {
+            if (key.includes('renovado')) {
+              return user[key].percent;
+            }
+            return user[key];
+          };
+
+          // Create a sorted array to determine positions
+          const sortedUsers = [...users].sort((a, b) => getValue(b) - getValue(a));
+          
+          // Create a map of user_id to position
+          const positionMap = new Map();
+          sortedUsers.forEach((user, index) => {
+            positionMap.set(user.user_id, index + 1);
+          });
+
+          // Assign positions to original users without changing their order
+          return users.map(user => ({
+            ...user,
+            [`position_${key}`]: positionMap.get(user.user_id) || 0,
+          }));
+        };
+
+        let rankedUsers = userMetrics;
+        rankedUsers = calculatePositions(rankedUsers, 'vendas');
+        rankedUsers = calculatePositions(rankedUsers, 'renovado_trimble');
+        rankedUsers = calculatePositions(rankedUsers, 'renovado_chaos');
+        rankedUsers = calculatePositions(rankedUsers, 'cross_selling');
+        rankedUsers = calculatePositions(rankedUsers, 'onboarding');
+        rankedUsers = calculatePositions(rankedUsers, 'packs_vendidos');
+
+        setRankings(rankedUsers);
+
+        // Calculate gap to leader for current user
+        const currentUser = rankedUsers.find(u => u.user_id === profile.user_id);
+        if (currentUser) {
+          const leader = rankedUsers.reduce((prev, current) => 
+            (current.vendas > prev.vendas) ? current : prev
+          );
+          setGapToLeader(Math.max(0, leader.vendas - currentUser.vendas));
+        }
+      } else {
+        // For regular users: only get their positions using secure function
+        const { data: positionsData, error: positionsError } = await supabase
+          .rpc('get_user_ranking_positions');
+
+        if (positionsError) {
+          console.error("Error fetching user positions:", positionsError);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar suas posições",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!positionsData || positionsData.length === 0) {
+          // User has no position data - set default positions
+          setRankings([]);
+          return;
+        }
+
+        const positions = positionsData[0];
         
-        if (fallbackError) throw fallbackError;
-        profiles = data;
-      }
+        // Get current user's own metrics for display
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
 
-      if (!profiles) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar os perfis",
-          variant: "destructive",
-        });
-        return;
-      }
+        const { data: userReports, error: reportsError } = await supabase
+          .from("daily_reports")
+          .select("*")
+          .eq("user_id", profile.user_id)
+          .gte("date", startOfMonth.toISOString().split('T')[0]);
 
-      // Get daily reports for the current month
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
+        if (reportsError) {
+          console.error("Error fetching user reports:", reportsError);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar seus relatórios",
+            variant: "destructive",
+          });
+          return;
+        }
 
-      const { data: reports, error: reportsError } = await supabase
-        .from("daily_reports")
-        .select("*")
-        .gte("date", startOfMonth.toISOString().split('T')[0]);
-
-      if (reportsError) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar os relatórios",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Calculate metrics for each user
-      const userMetrics = profiles?.map(profile => {
-        const userReports = reports?.filter(r => r.user_id === profile.user_id) || [];
-
-        const metrics = userReports.reduce(
+        const metrics = userReports?.reduce(
           (acc, report) => {
             acc.vendas += report.sales_amount || 0;
             acc.sketchup_to_renew += report.sketchup_to_renew || 0;
@@ -140,9 +266,19 @@ const Ranking = () => {
             onboarding: 0,
             packs_vendidos: 0,
           }
-        );
+        ) || {
+          vendas: 0,
+          sketchup_to_renew: 0,
+          sketchup_renewed: 0,
+          chaos_to_renew: 0,
+          chaos_renewed: 0,
+          cross_selling: 0,
+          onboarding: 0,
+          packs_vendidos: 0,
+        };
 
-        return {
+        // Create ranking data with only current user's data and positions from secure function
+        const currentUserRanking: RankingUser = {
           user_id: profile.user_id,
           name: profile.name,
           vendas: metrics.vendas,
@@ -161,59 +297,16 @@ const Ranking = () => {
           cross_selling: metrics.cross_selling,
           onboarding: metrics.onboarding,
           packs_vendidos: metrics.packs_vendidos,
-          position_vendas: 0,
-          position_renovado_trimble: 0,
-          position_renovado_chaos: 0,
-          position_cross_selling: 0,
-          position_onboarding: 0,
-          position_packs_vendidos: 0,
-        };
-      }) || [];
-
-      // Calculate positions for each metric
-      const calculatePositions = (users: any[], key: string) => {
-        const getValue = (user: any) => {
-          if (key.includes('renovado')) {
-            return user[key].percent;
-          }
-          return user[key];
+          position_vendas: positions.sales_position || 0,
+          position_renovado_trimble: positions.renewals_position || 0,
+          position_renovado_chaos: positions.renewals_position || 0,
+          position_cross_selling: positions.cross_selling_position || 0,
+          position_onboarding: positions.onboarding_position || 0,
+          position_packs_vendidos: positions.packs_position || 0,
         };
 
-        // Create a sorted array to determine positions
-        const sortedUsers = [...users].sort((a, b) => getValue(b) - getValue(a));
-        
-        // Create a map of user_id to position
-        const positionMap = new Map();
-        sortedUsers.forEach((user, index) => {
-          positionMap.set(user.user_id, index + 1);
-        });
-
-        // Assign positions to original users without changing their order
-        return users.map(user => ({
-          ...user,
-          [`position_${key}`]: positionMap.get(user.user_id) || 0,
-        }));
-      };
-
-      let rankedUsers = userMetrics;
-      rankedUsers = calculatePositions(rankedUsers, 'vendas');
-      rankedUsers = calculatePositions(rankedUsers, 'renovado_trimble');
-      rankedUsers = calculatePositions(rankedUsers, 'renovado_chaos');
-      rankedUsers = calculatePositions(rankedUsers, 'cross_selling');
-      rankedUsers = calculatePositions(rankedUsers, 'onboarding');
-      rankedUsers = calculatePositions(rankedUsers, 'packs_vendidos');
-
-      setRankings(rankedUsers);
-
-      // Calculate gap to leader for current user
-      if (!isGestor && rankedUsers.length > 0) {
-        const currentUser = rankedUsers.find(u => u.user_id === profile.user_id);
-        if (currentUser) {
-          const leader = rankedUsers.reduce((prev, current) => 
-            (current.vendas > prev.vendas) ? current : prev
-          );
-          setGapToLeader(leader.vendas - currentUser.vendas);
-        }
+        setRankings([currentUserRanking]);
+        setGapToLeader(0); // For sellers, we don't show gap to leader
       }
 
     } catch (error) {
@@ -451,18 +544,6 @@ const Ranking = () => {
                     #{getCurrentUserPosition('packs_vendidos')}
                   </Badge>
                 </div>
-
-                {!isGestor && gapToLeader > 0 && (
-                  <div className="mt-4 p-3 rounded-lg bg-warning/10 border border-warning/20">
-                    <div className="flex items-center gap-2 text-warning">
-                      <Target className="h-4 w-4" />
-                      <span className="font-medium text-sm">Gap to Leader</span>
-                    </div>
-                    <p className="text-sm text-warning/80 mt-1">
-                      Faltam {formatCurrency(gapToLeader)} para alcançar o 1º lugar
-                    </p>
-                  </div>
-                )}
               </div>
             )}
           </CardContent>
@@ -485,78 +566,149 @@ const Ranking = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {(isGestor ? sortedRankings : rankings.sort((a, b) => b.vendas - a.vendas)).map((user, index) => (
-                <div
-                  key={user.user_id}
-                  className={`flex items-center gap-4 p-4 rounded-lg transition-all ${
-                    user.user_id === profile?.user_id
-                      ? "bg-primary/10 border border-primary/20"
-                      : "bg-muted/30 hover:bg-muted/50"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 min-w-[60px]">
-                    {getPositionIcon(index + 1)}
-                    <Badge className={getPositionBadge(index + 1)}>
-                      #{index + 1}
-                    </Badge>
-                  </div>
+              {isGestor ? (
+                sortedRankings.map((user, index) => (
+                  <div
+                    key={user.user_id}
+                    className={`flex items-center gap-4 p-4 rounded-lg transition-all ${
+                      user.user_id === profile?.user_id
+                        ? "bg-primary/10 border border-primary/20"
+                        : "bg-muted/30 hover:bg-muted/50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-[60px]">
+                      {getPositionIcon(index + 1)}
+                      <Badge className={getPositionBadge(index + 1)}>
+                        #{index + 1}
+                      </Badge>
+                    </div>
 
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback>
-                      {getInitials(user.name)}
-                    </AvatarFallback>
-                  </Avatar>
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback>
+                        {getInitials(user.name)}
+                      </AvatarFallback>
+                    </Avatar>
 
-                  <div className="flex-1">
-                    <h3 className="font-medium">{user.name}</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-6 gap-4 mt-2 text-sm text-muted-foreground">
-                      <div>
-                        <span className="block text-xs">Vendas</span>
-                        <span className="font-medium text-foreground">
-                          {formatCurrency(user.vendas)}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="block text-xs">Trimble</span>
-                        <span className="font-medium text-foreground">
-                          {user.renovado_trimble.percent.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div>
-                        <span className="block text-xs">Chaos</span>
-                        <span className="font-medium text-foreground">
-                          {user.renovado_chaos.percent.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div>
-                        <span className="block text-xs">Cross Selling</span>
-                        <span className="font-medium text-foreground">
-                          {user.cross_selling}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="block text-xs">Onboarding</span>
-                        <span className="font-medium text-foreground">
-                          {user.onboarding}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="block text-xs">Packs Vendidos</span>
-                        <span className="font-medium text-foreground">
-                          {user.packs_vendidos}
-                        </span>
+                    <div className="flex-1">
+                      <h3 className="font-medium">{user.name}</h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-6 gap-4 mt-2 text-sm text-muted-foreground">
+                        <div>
+                          <span className="block text-xs">Vendas</span>
+                          <span className="font-medium text-foreground">
+                            {formatCurrency(user.vendas)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-xs">Trimble</span>
+                          <span className="font-medium text-foreground">
+                            {user.renovado_trimble.percent.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-xs">Chaos</span>
+                          <span className="font-medium text-foreground">
+                            {user.renovado_chaos.percent.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-xs">Cross Selling</span>
+                          <span className="font-medium text-foreground">
+                            {user.cross_selling}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-xs">Onboarding</span>
+                          <span className="font-medium text-foreground">
+                            {user.onboarding}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-xs">Packs Vendidos</span>
+                          <span className="font-medium text-foreground">
+                            {user.packs_vendidos}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-
-              {rankings.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Trophy className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Nenhum dado disponível ainda</p>
-                  <p className="text-xs">Complete alguns Daylins para aparecer no ranking</p>
-                </div>
+                ))
+              ) : (
+                // For regular users: show only their own data with positions
+                rankings.length > 0 ? (
+                  <div className="text-center py-8">
+                    <div className="max-w-md mx-auto p-6 rounded-lg bg-primary/10 border border-primary/20">
+                      <h3 className="font-medium text-lg mb-4">Seus Dados</h3>
+                      
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="text-center p-3 rounded bg-background/50">
+                          <span className="block text-xs text-muted-foreground">Vendas</span>
+                          <span className="font-medium text-lg">
+                            {formatCurrency(rankings[0].vendas)}
+                          </span>
+                          <Badge className={`mt-1 ${getPositionBadge(rankings[0].position_vendas)}`}>
+                            #{rankings[0].position_vendas}
+                          </Badge>
+                        </div>
+                        
+                        <div className="text-center p-3 rounded bg-background/50">
+                          <span className="block text-xs text-muted-foreground">Trimble</span>
+                          <span className="font-medium text-lg">
+                            {rankings[0].renovado_trimble.percent.toFixed(1)}%
+                          </span>
+                          <Badge className={`mt-1 ${getPositionBadge(rankings[0].position_renovado_trimble)}`}>
+                            #{rankings[0].position_renovado_trimble}
+                          </Badge>
+                        </div>
+                        
+                        <div className="text-center p-3 rounded bg-background/50">
+                          <span className="block text-xs text-muted-foreground">Chaos</span>
+                          <span className="font-medium text-lg">
+                            {rankings[0].renovado_chaos.percent.toFixed(1)}%
+                          </span>
+                          <Badge className={`mt-1 ${getPositionBadge(rankings[0].position_renovado_chaos)}`}>
+                            #{rankings[0].position_renovado_chaos}
+                          </Badge>
+                        </div>
+                        
+                        <div className="text-center p-3 rounded bg-background/50">
+                          <span className="block text-xs text-muted-foreground">Cross Selling</span>
+                          <span className="font-medium text-lg">
+                            {rankings[0].cross_selling}
+                          </span>
+                          <Badge className={`mt-1 ${getPositionBadge(rankings[0].position_cross_selling)}`}>
+                            #{rankings[0].position_cross_selling}
+                          </Badge>
+                        </div>
+                        
+                        <div className="text-center p-3 rounded bg-background/50">
+                          <span className="block text-xs text-muted-foreground">Onboarding</span>
+                          <span className="font-medium text-lg">
+                            {rankings[0].onboarding}
+                          </span>
+                          <Badge className={`mt-1 ${getPositionBadge(rankings[0].position_onboarding)}`}>
+                            #{rankings[0].position_onboarding}
+                          </Badge>
+                        </div>
+                        
+                        <div className="text-center p-3 rounded bg-background/50">
+                          <span className="block text-xs text-muted-foreground">Packs Vendidos</span>
+                          <span className="font-medium text-lg">
+                            {rankings[0].packs_vendidos}
+                          </span>
+                          <Badge className={`mt-1 ${getPositionBadge(rankings[0].position_packs_vendidos)}`}>
+                            #{rankings[0].position_packs_vendidos}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Trophy className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>Nenhum dado disponível ainda</p>
+                    <p className="text-xs">Complete alguns Daylins para aparecer no ranking</p>
+                  </div>
+                )
               )}
             </div>
           </CardContent>
