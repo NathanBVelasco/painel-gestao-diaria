@@ -14,6 +14,11 @@ import { MessageCircle, Send, Loader2, Paperclip, X, Bot, User, Settings } from 
 import { cn } from "@/lib/utils";
 import { AIExpertiseConfig } from "@/components/AIExpertiseConfig";
 
+interface SoftwareKnowledge {
+  software_name: string;
+  category: string;
+}
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -27,17 +32,35 @@ const AssistenteAI = () => {
   const [attachments, setAttachments] = useState<File[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [chatTone, setChatTone] = useState("amigavel");
+  const [activeFocus, setActiveFocus] = useState<string>("nenhum");
+  const [softwares, setSoftwares] = useState<SoftwareKnowledge[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     loadUserPreferences();
+    loadSoftwareList();
   }, [user?.id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const loadSoftwareList = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("ai_software_knowledge")
+        .select("software_name, category")
+        .eq("is_active", true)
+        .order("software_name");
+
+      if (error) throw error;
+      setSoftwares(data || []);
+    } catch (error) {
+      console.error("Error loading software list:", error);
+    }
+  };
 
   const loadUserPreferences = async () => {
     if (!user?.id) return;
@@ -45,7 +68,7 @@ const AssistenteAI = () => {
     try {
       const { data, error } = await supabase
         .from('ai_chat_preferences')
-        .select('chat_tone')
+        .select('chat_tone, active_software_focus')
         .eq('user_id', user.id)
         .single();
 
@@ -56,20 +79,21 @@ const AssistenteAI = () => {
 
       if (data) {
         setChatTone(data.chat_tone);
+        setActiveFocus(data.active_software_focus || "nenhum");
       }
     } catch (error) {
       console.error('Error loading preferences:', error);
     }
   };
 
-  const saveUserPreference = async (newTone: string) => {
+  const saveUserPreference = async (field: 'chat_tone' | 'active_software_focus', value: string) => {
     if (!user?.id) return;
 
     try {
       const { error } = await supabase
         .from('ai_chat_preferences')
         .upsert(
-          { user_id: user.id, chat_tone: newTone },
+          { user_id: user.id, [field]: value },
           { onConflict: 'user_id' }
         );
 
@@ -79,7 +103,12 @@ const AssistenteAI = () => {
         return;
       }
 
-      setChatTone(newTone);
+      if (field === 'chat_tone') {
+        setChatTone(value);
+      } else if (field === 'active_software_focus') {
+        setActiveFocus(value);
+      }
+      
       toast.success("Preferência salva com sucesso");
     } catch (error) {
       console.error('Error saving preference:', error);
@@ -107,6 +136,7 @@ const AssistenteAI = () => {
         body: { 
           message: currentMessage, 
           chatTone,
+          activeFocus: activeFocus !== "nenhum" ? activeFocus : null,
           attachments: userMessage.attachments || []
         }
       });
@@ -186,21 +216,43 @@ const AssistenteAI = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Tone Selection */}
-              <div className="space-y-2">
-                <Label htmlFor="chat-tone">Tom da Conversa</Label>
-                <Select value={chatTone} onValueChange={saveUserPreference}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tom da conversa" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="objetivo">Objetivo</SelectItem>
-                    <SelectItem value="explicativo">Explicativo</SelectItem>
-                    <SelectItem value="amigavel">Amigável</SelectItem>
-                    <SelectItem value="simpatico">Simpático</SelectItem>
-                    <SelectItem value="profissional">Profissional</SelectItem>
-                  </SelectContent>
-                </Select>
+              {/* Tone and Software Focus Selection */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="chat-tone">Tom da Conversa</Label>
+                  <Select value={chatTone} onValueChange={(value) => saveUserPreference('chat_tone', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tom da conversa" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="objetivo">Objetivo</SelectItem>
+                      <SelectItem value="explicativo">Explicativo</SelectItem>
+                      <SelectItem value="amigavel">Amigável</SelectItem>
+                      <SelectItem value="simpatico">Simpático</SelectItem>
+                      <SelectItem value="profissional">Profissional</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="software-focus">Software de Foco Principal</Label>
+                  <Select value={activeFocus} onValueChange={(value) => saveUserPreference('active_software_focus', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o foco principal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nenhum">Nenhum</SelectItem>
+                      {softwares.map((software) => (
+                        <SelectItem 
+                          key={software.software_name} 
+                          value={software.software_name.toLowerCase().replace(/\s+/g, "_")}
+                        >
+                          {software.software_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Chat Messages */}
