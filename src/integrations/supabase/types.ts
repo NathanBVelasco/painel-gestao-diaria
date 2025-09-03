@@ -438,48 +438,7 @@ export type Database = {
       }
     }
     Views: {
-      ai_software_basic_info: {
-        Row: {
-          category: Database["public"]["Enums"]["software_category"] | null
-          created_at: string | null
-          description: string | null
-          differentials: string | null
-          id: string | null
-          integration_benefits: string | null
-          is_active: boolean | null
-          software_name: string | null
-          target_audience: string | null
-          updated_at: string | null
-          use_cases: string | null
-        }
-        Insert: {
-          category?: Database["public"]["Enums"]["software_category"] | null
-          created_at?: string | null
-          description?: string | null
-          differentials?: string | null
-          id?: string | null
-          integration_benefits?: string | null
-          is_active?: boolean | null
-          software_name?: string | null
-          target_audience?: string | null
-          updated_at?: string | null
-          use_cases?: string | null
-        }
-        Update: {
-          category?: Database["public"]["Enums"]["software_category"] | null
-          created_at?: string | null
-          description?: string | null
-          differentials?: string | null
-          id?: string | null
-          integration_benefits?: string | null
-          is_active?: boolean | null
-          software_name?: string | null
-          target_audience?: string | null
-          updated_at?: string | null
-          use_cases?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       can_access_sensitive_business_data: {
@@ -511,6 +470,10 @@ export type Database = {
           renewals_position: number
           sales_position: number
         }[]
+      }
+      get_user_software_access_level: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       is_gestor: {
         Args: { user_id: string }
