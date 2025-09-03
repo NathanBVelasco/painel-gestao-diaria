@@ -229,28 +229,60 @@ const Dashboard = () => {
       const { data: licenseReports } = await licenseQuery;
 
       if (period === "HOJE" || period === "SEMANAL") {
-        // Get most recent report for "licencas a renovar" (instead of Monday only)
-        const mostRecentReport = licenseReports
-          ?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-        
-        if (mostRecentReport) {
-          if (product === "TRIMBLE" || product === "TODOS") {
-            licensePeriodTotals.licencasRenovar += mostRecentReport.sketchup_to_renew || 0;
+        if (isGestor && selectedSeller === "TODOS") {
+          // For gestor viewing team data: get most recent report per user and sum
+          const userLatestReports = new Map();
+          licenseReports?.forEach(report => {
+            const currentLatest = userLatestReports.get(report.user_id);
+            if (!currentLatest || new Date(report.date) > new Date(currentLatest.date)) {
+              userLatestReports.set(report.user_id, report);
+            }
+          });
+          
+          // Sum "licencas a renovar" from most recent report of each user
+          userLatestReports.forEach(report => {
+            if (product === "TRIMBLE" || product === "TODOS") {
+              licensePeriodTotals.licencasRenovar += report.sketchup_to_renew || 0;
+            }
+            if (product === "CHAOS" || product === "TODOS") {
+              licensePeriodTotals.licencasRenovar += report.chaos_to_renew || 0;
+            }
+          });
+          
+          // Sum ALL "renovado" from all team reports in the period
+          licenseReports?.forEach(report => {
+            if (product === "TRIMBLE" || product === "TODOS") {
+              licensePeriodTotals.renovadoQty += report.sketchup_renewed || 0;
+            }
+            if (product === "CHAOS" || product === "TODOS") {
+              licensePeriodTotals.renovadoQty += report.chaos_renewed || 0;
+            }
+          });
+          
+        } else {
+          // For individual user or specific seller selected
+          const mostRecentReport = licenseReports
+            ?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+          
+          if (mostRecentReport) {
+            if (product === "TRIMBLE" || product === "TODOS") {
+              licensePeriodTotals.licencasRenovar += mostRecentReport.sketchup_to_renew || 0;
+            }
+            if (product === "CHAOS" || product === "TODOS") {
+              licensePeriodTotals.licencasRenovar += mostRecentReport.chaos_to_renew || 0;
+            }
           }
-          if (product === "CHAOS" || product === "TODOS") {
-            licensePeriodTotals.licencasRenovar += mostRecentReport.chaos_to_renew || 0;
-          }
-        }
 
-        // Sum ALL reports for "renovado" (instead of just latest)
-        licenseReports?.forEach(report => {
-          if (product === "TRIMBLE" || product === "TODOS") {
-            licensePeriodTotals.renovadoQty += report.sketchup_renewed || 0;
-          }
-          if (product === "CHAOS" || product === "TODOS") {
-            licensePeriodTotals.renovadoQty += report.chaos_renewed || 0;
-          }
-        });
+          // Sum ALL reports for "renovado" in the period
+          licenseReports?.forEach(report => {
+            if (product === "TRIMBLE" || product === "TODOS") {
+              licensePeriodTotals.renovadoQty += report.sketchup_renewed || 0;
+            }
+            if (product === "CHAOS" || product === "TODOS") {
+              licensePeriodTotals.renovadoQty += report.chaos_renewed || 0;
+            }
+          });
+        }
 
       } else if (period === "MENSAL") {
         // For monthly: aggregate weekly data from current month
