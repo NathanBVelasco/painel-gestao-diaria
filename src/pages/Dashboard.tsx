@@ -190,6 +190,9 @@ const Dashboard = () => {
 
       const { data: reports, error } = await query;
 
+      console.log("DEBUG - Reports found:", reports?.length);
+      console.log("DEBUG - Sample reports:", reports?.slice(0, 3));
+
       if (error) {
         toast({
           title: "Erro",
@@ -450,6 +453,8 @@ const Dashboard = () => {
         crossSelling: 0,
         packsVendidos: 0,
       };
+
+      console.log("DEBUG - Calculated totals:", totals);
 
       setData({
         ...totals,
