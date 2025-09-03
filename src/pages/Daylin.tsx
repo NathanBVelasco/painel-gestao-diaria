@@ -163,6 +163,7 @@ const Daylin = () => {
       loadSellersWithTargets();
     } else {
       loadTodayReport();
+      loadWeeklyRenewalData();
       checkEndDayAlert();
     }
   }, [profile, isGestor]);
@@ -472,6 +473,43 @@ const Daylin = () => {
         description: "Ocorreu um erro inesperado ao salvar",
         variant: "destructive",
       });
+    }
+  };
+
+  // Helper function to check if today is Monday
+  const isMonday = () => {
+    return new Date().getDay() === 1;
+  };
+
+  // Helper function to get Monday of current week
+  const getMondayOfWeek = (date = new Date()) => {
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    const monday = new Date(date.setDate(diff));
+    return monday.toISOString().split('T')[0];
+  };
+
+  // Load renewal data from Monday of current week
+  const loadWeeklyRenewalData = async () => {
+    if (!profile || isMonday()) return; // Don't load if it's Monday (user will input fresh data)
+
+    try {
+      const mondayDate = getMondayOfWeek();
+      
+      const { data: mondayReport } = await supabase
+        .from("daily_reports")
+        .select("sketchup_to_renew, chaos_to_renew")
+        .eq("user_id", profile.user_id)
+        .eq("date", mondayDate)
+        .maybeSingle();
+
+      if (mondayReport) {
+        // Update the start form with Monday's renewal data
+        updateStartField('sketchup_to_renew', mondayReport.sketchup_to_renew?.toString() || "");
+        updateStartField('chaos_to_renew', mondayReport.chaos_to_renew?.toString() || "");
+      }
+    } catch (error) {
+      console.error("Error loading weekly renewal data:", error);
     }
   };
 
