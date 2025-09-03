@@ -250,7 +250,7 @@ const Dashboard = () => {
 
         if (latestReport) {
           if (product === "TRIMBLE" || product === "TODOS") {
-            licensePeriodTotals.renovadoQty = latestReport.sketchup_renewed || 0;
+            licensePeriodTotals.renovadoQty += latestReport.sketchup_renewed || 0;
           }
           if (product === "CHAOS" || product === "TODOS") {
             licensePeriodTotals.renovadoQty += latestReport.chaos_renewed || 0;
