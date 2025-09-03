@@ -279,8 +279,8 @@ const Dashboard = () => {
         churn: 100 - weeklyRenovadoPercent,
       });
 
-      // Generate chart data for last 5 business days
-      generateChartData(reports || []);
+      // Generate chart data for last 5 business days (independent of period filter)
+      generateChartData();
 
     } catch (error) {
       console.error("Error loading dashboard data:", error);
