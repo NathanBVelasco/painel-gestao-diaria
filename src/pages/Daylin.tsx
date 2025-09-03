@@ -1405,7 +1405,10 @@ const Daylin = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="sketchup_to_renew">Qtd SketchUp (a renovar)</Label>
+                    <Label htmlFor="sketchup_to_renew" className="flex items-center gap-1">
+                      Qtd SketchUp (a renovar)
+                      {!isMonday() && <Badge variant="secondary" className="text-xs">Seg</Badge>}
+                    </Label>
                     <Input
                       id="sketchup_to_renew"
                       type="number"
@@ -1413,10 +1416,20 @@ const Daylin = () => {
                       value={startForm.sketchup_to_renew}
                       onChange={(e) => updateStartField('sketchup_to_renew', e.target.value)}
                       placeholder="0"
+                      disabled={!isMonday()}
+                      className={!isMonday() ? "bg-muted" : ""}
                     />
+                    {!isMonday() && (
+                      <p className="text-xs text-muted-foreground">
+                        📅 Editável apenas às segundas-feiras
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="chaos_to_renew">Qtd Chaos (a renovar)</Label>
+                    <Label htmlFor="chaos_to_renew" className="flex items-center gap-1">
+                      Qtd Chaos (a renovar)
+                      {!isMonday() && <Badge variant="secondary" className="text-xs">Seg</Badge>}
+                    </Label>
                     <Input
                       id="chaos_to_renew"
                       type="number"
@@ -1424,7 +1437,14 @@ const Daylin = () => {
                       value={startForm.chaos_to_renew}
                       onChange={(e) => updateStartField('chaos_to_renew', e.target.value)}
                       placeholder="0"
+                      disabled={!isMonday()}
+                      className={!isMonday() ? "bg-muted" : ""}
                     />
+                    {!isMonday() && (
+                      <p className="text-xs text-muted-foreground">
+                        📅 Editável apenas às segundas-feiras
+                      </p>
+                    )}
                   </div>
                 </div>
 

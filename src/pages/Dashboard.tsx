@@ -28,7 +28,7 @@ interface DashboardData {
   vendasTotais: number;
   forecast: number;
   licencasRenovar: number;
-  renovado: { percent: number; quantity: number };
+  renovado: { percent: number; quantity: number; trend: number };
   churn: number;
   onboarding: number;
   crossSelling: number;
@@ -51,7 +51,7 @@ const Dashboard = () => {
     vendasTotais: 0,
     forecast: 0,
     licencasRenovar: 0,
-    renovado: { percent: 0, quantity: 0 },
+    renovado: { percent: 0, quantity: 0, trend: 0 },
     churn: 0,
     onboarding: 0,
     crossSelling: 0,
@@ -206,26 +206,8 @@ const Dashboard = () => {
         return;
       }
 
-      // Calculate weekly metrics separately (always current week regardless of period filter)
-      let weeklyQuery = supabase.from("daily_reports").select("*");
-      
-      if (!isGestor) {
-        weeklyQuery = weeklyQuery.eq("user_id", profile.user_id);
-      } else if (selectedSeller !== "TODOS") {
-        weeklyQuery = weeklyQuery.eq("user_id", selectedSeller);
-      }
-
-      const weekStartDate = new Date(today);
-      const dayOfWeek = today.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-      weekStartDate.setDate(today.getDate() - daysToMonday);
-
-      weeklyQuery = weeklyQuery.gte("date", weekStartDate.toISOString().split('T')[0]);
-
-      const { data: weeklyReports } = await weeklyQuery;
-
-      // Calculate weekly totals for licenses metrics
-      const weeklyTotals = weeklyReports?.reduce(
+      // Calculate period-based metrics for licenses (based on selected period filter)
+      const periodTotals = reports?.reduce(
         (acc, report) => {
           if (product === "TRIMBLE" || product === "TODOS") {
             acc.licencasRenovar += report.sketchup_to_renew || 0;
@@ -240,9 +222,78 @@ const Dashboard = () => {
         { licencasRenovar: 0, renovadoQty: 0 }
       ) || { licencasRenovar: 0, renovadoQty: 0 };
 
-      const weeklyRenovadoPercent = weeklyTotals.licencasRenovar > 0 
-        ? (weeklyTotals.renovadoQty / weeklyTotals.licencasRenovar) * 100 
+      const currentRenovadoPercent = periodTotals.licencasRenovar > 0 
+        ? (periodTotals.renovadoQty / periodTotals.licencasRenovar) * 100 
         : 0;
+
+      // Calculate previous period for trend comparison
+      let previousStartDate = new Date();
+      let previousEndDate = new Date();
+
+      switch (period) {
+        case "HOJE":
+          previousStartDate = new Date(today);
+          previousStartDate.setDate(today.getDate() - 1);
+          previousEndDate = new Date(previousStartDate);
+          break;
+        case "ONTEM":
+          previousStartDate = new Date(today);
+          previousStartDate.setDate(today.getDate() - 2);
+          previousEndDate = new Date(today);
+          previousEndDate.setDate(today.getDate() - 2);
+          break;
+        case "SEMANAL":
+          previousStartDate = new Date(startDate);
+          previousStartDate.setDate(startDate.getDate() - 7);
+          previousEndDate = new Date(startDate);
+          previousEndDate.setDate(startDate.getDate() - 1);
+          break;
+        case "MENSAL":
+          previousStartDate = new Date(startDate.getFullYear(), startDate.getMonth() - 1, 1);
+          previousEndDate = new Date(startDate.getFullYear(), startDate.getMonth(), 0);
+          break;
+        case "TRIMESTRAL":
+          previousStartDate = new Date(startDate.getFullYear(), startDate.getMonth() - 3, 1);
+          previousEndDate = new Date(startDate.getFullYear(), startDate.getMonth(), 0);
+          break;
+      }
+
+      // Query for previous period data
+      let previousQuery = supabase.from("daily_reports").select("*");
+      if (!isGestor) {
+        previousQuery = previousQuery.eq("user_id", profile.user_id);
+      } else if (selectedSeller !== "TODOS") {
+        previousQuery = previousQuery.eq("user_id", selectedSeller);
+      }
+      
+      previousQuery = previousQuery
+        .gte("date", previousStartDate.toISOString().split('T')[0])
+        .lte("date", previousEndDate.toISOString().split('T')[0]);
+
+      const { data: previousReports } = await previousQuery;
+
+      // Calculate previous period totals
+      const previousTotals = previousReports?.reduce(
+        (acc, report) => {
+          if (product === "TRIMBLE" || product === "TODOS") {
+            acc.licencasRenovar += report.sketchup_to_renew || 0;
+            acc.renovadoQty += report.sketchup_renewed || 0;
+          }
+          if (product === "CHAOS" || product === "TODOS") {
+            acc.licencasRenovar += report.chaos_to_renew || 0;
+            acc.renovadoQty += report.chaos_renewed || 0;
+          }
+          return acc;
+        },
+        { licencasRenovar: 0, renovadoQty: 0 }
+      ) || { licencasRenovar: 0, renovadoQty: 0 };
+
+      const previousRenovadoPercent = previousTotals.licencasRenovar > 0 
+        ? (previousTotals.renovadoQty / previousTotals.licencasRenovar) * 100 
+        : 0;
+
+      // Calculate trend (difference between current and previous period)
+      const trendPercent = currentRenovadoPercent - previousRenovadoPercent;
 
       // Calculate other metrics based on selected period
       const totals = reports?.reduce(
@@ -271,12 +322,13 @@ const Dashboard = () => {
 
       setData({
         ...totals,
-        licencasRenovar: weeklyTotals.licencasRenovar,
+        licencasRenovar: periodTotals.licencasRenovar,
         renovado: {
-          percent: weeklyRenovadoPercent,
-          quantity: weeklyTotals.renovadoQty,
+          percent: currentRenovadoPercent,
+          quantity: periodTotals.renovadoQty,
+          trend: trendPercent,
         },
-        churn: 100 - weeklyRenovadoPercent,
+        churn: 100 - currentRenovadoPercent,
       });
 
       // Generate chart data for last 5 business days (independent of period filter)
@@ -543,8 +595,18 @@ const Dashboard = () => {
             <CheckCircle className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">
-              {data.renovado.percent.toFixed(1)}%
+            <div className="flex items-center gap-2">
+              <div className="text-2xl font-bold text-success">
+                {data.renovado.percent.toFixed(1)}%
+              </div>
+              {data.renovado.trend !== 0 && (
+                <div className={`flex items-center gap-1 text-xs font-medium ${
+                  data.renovado.trend > 0 ? 'text-success' : 'text-destructive'
+                }`}>
+                  {data.renovado.trend > 0 ? '↗' : '↘'}
+                  {Math.abs(data.renovado.trend).toFixed(1)}%
+                </div>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
               {data.renovado.quantity} licenças
