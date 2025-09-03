@@ -280,7 +280,7 @@ const Dashboard = () => {
       });
 
       // Generate chart data for last 5 business days (independent of period filter)
-      generateChartData();
+      await generateChartData();
 
     } catch (error) {
       console.error("Error loading dashboard data:", error);
