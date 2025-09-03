@@ -700,75 +700,70 @@ const Daylin = () => {
             <TabsTrigger value="metas">Metas Mensais</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="status" className="space-y-6">
-            {/* Date Selector */}
-            <Card className="card-shadow">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5 text-primary" />
-                  📅 Selecionar Data
-                </CardTitle>
-                <CardDescription>
-                  Visualize dados de dias anteriores (últimos 90 dias)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4">
-                  <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-60 justify-start text-left font-normal"
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selectedDate.toLocaleDateString('pt-BR', {
-                          weekday: 'long',
-                          year: 'numeric', 
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={(date) => {
-                          if (date) {
-                            setSelectedDate(date);
-                            setShowDatePicker(false);
-                          }
-                        }}
-                        disabled={(date) =>
-                          date > new Date() || date < subDays(new Date(), 90)
-                        }
-                        initialFocus
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  
-                  {selectedDate.toDateString() !== new Date().toDateString() && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedDate(new Date())}
-                      className="flex items-center gap-2"
-                    >
-                      <RotateCcw className="h-3 w-3" />
-                      Voltar para Hoje
-                    </Button>
-                  )}
-                  
-                  <div className="text-sm text-muted-foreground">
-                    {selectedDate.toDateString() === new Date().toDateString() 
-                      ? "Visualizando dados de hoje" 
-                      : `Visualizando dados de ${selectedDate.toLocaleDateString('pt-BR')}`
+          {/* Compact Date Selector */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-muted/20 rounded-lg border border-muted/30">
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">Selecionar Data</span>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+              <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full sm:w-auto justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-3 w-3" />
+                    {selectedDate.toLocaleDateString('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit', 
+                      year: 'numeric'
+                    })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => {
+                      if (date) {
+                        setSelectedDate(date);
+                        setShowDatePicker(false);
+                      }
+                    }}
+                    disabled={(date) =>
+                      date > new Date() || date < subDays(new Date(), 90)
                     }
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+              
+              {selectedDate.toDateString() !== new Date().toDateString() && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedDate(new Date())}
+                  className="flex items-center gap-1 text-xs"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Hoje
+                </Button>
+              )}
+              
+              <div className="text-xs text-muted-foreground">
+                {selectedDate.toDateString() === new Date().toDateString() 
+                  ? "Hoje" 
+                  : selectedDate.toLocaleDateString('pt-BR')
+                }
+              </div>
+            </div>
+          </div>
+
+          <TabsContent value="status" className="space-y-6">
 
             {/* Empty state for historical dates */}
             {selectedDate.toDateString() !== new Date().toDateString() && 
