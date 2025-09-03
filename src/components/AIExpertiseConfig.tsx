@@ -128,9 +128,15 @@ export function AIExpertiseConfig() {
       const normalizedActiveFocus = activeFocus.toLowerCase().replace(/\s+/g, "_");
       
       // Validate data before saving
+      if (selectedSoftwares.length === 0) {
+        toast.error("Selecione pelo menos um software antes de salvar");
+        setSaving(false);
+        return;
+      }
+
       const dataToSave = {
         user_id: user.id,
-        selected_expertise: selectedSoftwares.length > 0 ? selectedSoftwares : [],
+        selected_expertise: selectedSoftwares,
         active_software_focus: normalizedActiveFocus,
         custom_instructions: customInstructions.trim() || null,
         expertise_template: expertiseTemplate
@@ -138,9 +144,22 @@ export function AIExpertiseConfig() {
 
       console.log("Saving AI preferences:", dataToSave);
 
+      // Check if record exists first for better logging
+      const { data: existingRecord } = await supabase
+        .from("ai_chat_preferences")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      console.log(existingRecord ? "Updating existing preferences" : "Creating new preferences");
+
+      // Use onConflict to properly handle unique constraint
       const { error } = await supabase
         .from("ai_chat_preferences")
-        .upsert(dataToSave);
+        .upsert(dataToSave, { 
+          onConflict: 'user_id',
+          ignoreDuplicates: false 
+        });
 
       if (error) {
         console.error("Supabase error details:", error);
@@ -154,18 +173,15 @@ export function AIExpertiseConfig() {
       
       // Provide more specific error messages
       let errorMessage = "Erro ao salvar configurações";
-      if (error?.message?.includes("duplicate key")) {
-        errorMessage = "Erro de duplicação - tentando novamente...";
-        // Retry once for duplicate key errors
-        setTimeout(() => savePreferences(), 1000);
-        return;
+      if (error?.code === "23505" || error?.message?.includes("duplicate key")) {
+        errorMessage = "Erro de chave duplicada - verificando dados...";
       } else if (error?.message?.includes("constraint")) {
         errorMessage = "Erro de validação de dados";
-      } else if (error?.code === "23505") {
-        errorMessage = "Configuração já existe - atualizando...";
+      } else if (error?.message?.includes("permission")) {
+        errorMessage = "Erro de permissão - verifique seu login";
       }
       
-      toast.error(`${errorMessage}: ${error?.message || error}`);
+      toast.error(`${errorMessage}. Detalhes: ${error?.message || error}`);
     } finally {
       setSaving(false);
     }
