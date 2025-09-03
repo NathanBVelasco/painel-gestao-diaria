@@ -318,8 +318,12 @@ const Dashboard = () => {
         .in("date", businessDates);
 
       // Apply user filter based on role
-      if (profile?.role === "gestor" && selectedSeller) {
-        query = query.eq("user_id", selectedSeller);
+      if (profile?.role === "gestor") {
+        if (selectedSeller) {
+          // Specific seller selected
+          query = query.eq("user_id", selectedSeller);
+        }
+        // If no seller selected, show aggregated data for all team (no additional filter needed)
       } else if (profile?.role === "vendedor") {
         query = query.eq("user_id", profile?.user_id);
       }
