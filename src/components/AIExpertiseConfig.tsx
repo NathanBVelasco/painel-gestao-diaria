@@ -105,10 +105,11 @@ export function AIExpertiseConfig() {
       if (error && error.code !== "PGRST116") throw error;
 
       if (data) {
-        setSelectedSoftwares(data.selected_expertise || []);
+        setSelectedSoftwares(Array.isArray(data.selected_expertise) ? data.selected_expertise : []);
         setActiveFocus(data.active_software_focus || "sketchup");
         setCustomInstructions(data.custom_instructions || "");
         setExpertiseTemplate(data.expertise_template || "general");
+        console.log("Loaded user preferences:", data);
       }
     } catch (error) {
       console.error("Error loading user preferences:", error);
@@ -123,22 +124,48 @@ export function AIExpertiseConfig() {
 
     setSaving(true);
     try {
+      // Standardize string processing for activeFocus
+      const normalizedActiveFocus = activeFocus.toLowerCase().replace(/\s+/g, "_");
+      
+      // Validate data before saving
+      const dataToSave = {
+        user_id: user.id,
+        selected_expertise: selectedSoftwares.length > 0 ? selectedSoftwares : [],
+        active_software_focus: normalizedActiveFocus,
+        custom_instructions: customInstructions.trim() || null,
+        expertise_template: expertiseTemplate
+      };
+
+      console.log("Saving AI preferences:", dataToSave);
+
       const { error } = await supabase
         .from("ai_chat_preferences")
-        .upsert({
-          user_id: user.id,
-          selected_expertise: selectedSoftwares,
-          active_software_focus: activeFocus,
-          custom_instructions: customInstructions,
-          expertise_template: expertiseTemplate
-        });
+        .upsert(dataToSave);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error details:", error);
+        throw error;
+      }
 
+      console.log("AI preferences saved successfully");
       toast.success("Configurações salvas com sucesso!");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving preferences:", error);
-      toast.error("Erro ao salvar configurações");
+      
+      // Provide more specific error messages
+      let errorMessage = "Erro ao salvar configurações";
+      if (error?.message?.includes("duplicate key")) {
+        errorMessage = "Erro de duplicação - tentando novamente...";
+        // Retry once for duplicate key errors
+        setTimeout(() => savePreferences(), 1000);
+        return;
+      } else if (error?.message?.includes("constraint")) {
+        errorMessage = "Erro de validação de dados";
+      } else if (error?.code === "23505") {
+        errorMessage = "Configuração já existe - atualizando...";
+      }
+      
+      toast.error(`${errorMessage}: ${error?.message || error}`);
     } finally {
       setSaving(false);
     }
@@ -147,7 +174,8 @@ export function AIExpertiseConfig() {
   const applyTemplate = (template: ExpertiseTemplate) => {
     setSelectedSoftwares(template.softwares);
     setExpertiseTemplate(template.id);
-    setActiveFocus(template.softwares[0].toLowerCase().replace(" ", "_"));
+    // Standardize string processing consistently
+    setActiveFocus(template.softwares[0].toLowerCase().replace(/\s+/g, "_"));
     toast.success(`Template "${template.name}" aplicado!`);
   };
 
