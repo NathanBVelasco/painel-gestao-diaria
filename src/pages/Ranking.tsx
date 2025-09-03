@@ -178,12 +178,20 @@ const Ranking = () => {
           return user[key];
         };
 
-        return [...users]
-          .sort((a, b) => getValue(b) - getValue(a))
-          .map((user, index) => ({
-            ...user,
-            [`position_${key}`]: index + 1,
-          }));
+        // Create a sorted array to determine positions
+        const sortedUsers = [...users].sort((a, b) => getValue(b) - getValue(a));
+        
+        // Create a map of user_id to position
+        const positionMap = new Map();
+        sortedUsers.forEach((user, index) => {
+          positionMap.set(user.user_id, index + 1);
+        });
+
+        // Assign positions to original users without changing their order
+        return users.map(user => ({
+          ...user,
+          [`position_${key}`]: positionMap.get(user.user_id) || 0,
+        }));
       };
 
       let rankedUsers = userMetrics;
