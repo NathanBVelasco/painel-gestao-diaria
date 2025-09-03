@@ -80,75 +80,93 @@ serve(async (req) => {
       }
     }
 
-    // Definir as características de cada tom
-    const toneConfig = {
-      objetivo: {
-        style: "seja direto e conciso. Use frases curtas e vá direto ao ponto. Evite floreios e foque apenas no essencial.",
-        example: "Resposta direta, sem rodeios, com informações práticas e imediatas."
-      },
-      explicativo: {
-        style: "seja detalhado e educativo. Explique o 'porquê' por trás das estratégias. Use exemplos e forneça contexto completo.",
-        example: "Resposta detalhada com explicações, contexto e exemplos práticos para melhor compreensão."
-      },
-      amigavel: {
-        style: "seja caloroso e próximo. Use uma linguagem acolhedora, inclua emojis e mantenha tom conversacional como se fosse um amigo experiente.",
-        example: "Resposta calorosa e próxima, com linguagem acolhedora e tom conversacional amigável."
-      },
-      simpatico: {
-        style: "seja carismático e empático. Demonstre compreensão pelos desafios do vendedor, use linguagem motivacional e inspiradora.",
-        example: "Resposta carismática e empática, com compreensão dos desafios e linguagem motivacional."
-      },
-      profissional: {
-        style: "seja formal e técnico. Use linguagem empresarial, termos técnicos apropriados e mantenha formalidade corporativa.",
-        example: "Resposta formal e técnica, com linguagem empresarial e termos técnicos apropriados."
-      }
+    // Define chat tones with their corresponding instructions
+    const chatTones = {
+      objetivo: "Seja direto, objetivo e focado em resultados. Use frases curtas e vá direto ao ponto dos benefícios e soluções.",
+      explicativo: "Seja didático e detalhado. Explique conceitos técnicos de forma clara, use exemplos práticos e antecipe dúvidas.",
+      amigavel: "Seja caloroso e próximo. Use um tom conversacional, informal mas respeitoso, como um consultor amigo.",
+      simpatico: "Seja empático e compreensivo. Reconheça desafios do cliente e mostre como pode ajudar de forma genuína.",
+      profissional: "Mantenha formalidade e expertise. Use linguagem técnica apropriada e demonstre profundo conhecimento do setor."
     };
 
-    const currentTone = toneConfig[chatTone as keyof typeof toneConfig] || toneConfig.amigavel;
+    const selectedTone = chatTones[chatTone as keyof typeof chatTones] || chatTones.amigavel;
 
-    // Prompt especializado em vendas de SketchUp/TotalCAD
-    let systemPrompt = `Você é um assistente especializado em vendas de software CAD, especificamente SketchUp, LayOut e produtos Trimble. 
+    // Build dynamic expertise knowledge
+    let expertiseContext = "";
+    if (softwareKnowledge.length > 0) {
+      expertiseContext = `
 
-Seu objetivo é ajudar vendedores brasileiros a:
-- Superar objeções de preço
-- Criar scripts de renovação eficazes  
-- Desenvolver estratégias de follow-up
-- Apresentar valor dos produtos CAD
-- Responder dúvidas técnicas de vendas
-- Gerar templates de email e WhatsApp
+=== CONHECIMENTO ESPECIALIZADO ===
 
-CONTEXTO DOS PRODUTOS:
-- SketchUp Pro: Software de modelagem 3D para arquitetura, design e engenharia
-- LayOut: Para documentação técnica e apresentações  
-- Trimble Connect: Colaboração em nuvem
-- Principais concorrentes: AutoCAD, Revit, ArchiCAD
+Você é especialista nos seguintes softwares:
 
-OBJEÇÕES COMUNS:
-- "Muito caro"
-- "Já temos outro software" 
-- "Usamos pouco"
-- "Não temos orçamento agora"
-- "Vamos avaliar outras opções"
+${softwareKnowledge.map(sw => `
+**${sw.software_name}**
+Categoria: ${sw.category}
+Descrição: ${sw.description}
 
-TOM DE RESPOSTA PERSONALIZADO:
-${currentTone.style}
+Diferenciais: ${sw.differentials}
 
-DIRETRIZES GERAIS:
-- Use linguagem brasileira natural
-- Seja prático e focado em vendas
-- Ofereça scripts prontos quando apropriado
-- Sempre termine com uma sugestão de próximo passo
+Objeções Comuns e Respostas:
+${sw.common_objections?.split('|').map((objection: string, i: number) => {
+  const scripts = sw.sales_scripts?.split('|') || [];
+  return `- "${objection}" → ${scripts[i] || 'Use os diferenciais para responder'}`;
+}).join('\n')}
 
-Responda sempre em português brasileiro com foco em vendas seguindo o tom personalizado definido.`;
+Casos de Uso: ${sw.use_cases}
+ROI/Benefícios: ${sw.roi_points}
+Concorrentes: ${sw.competitors}
+Público-Alvo: ${sw.target_audience}
+`).join('\n')}
 
-    // Processar anexos se houver
+${userPreferences?.active_software_focus ? `
+FOCO PRINCIPAL: ${userPreferences.active_software_focus}
+Contextualize sempre as respostas priorizando este software quando relevante.
+` : ''}
+
+${userPreferences?.custom_instructions ? `
+INSTRUÇÕES PERSONALIZADAS: ${userPreferences.custom_instructions}
+` : ''}
+`;
+    }
+
+    // Create the system prompt with TotalCAD context and selected tone
+    const systemPrompt = `Você é um especialista em vendas de softwares CAD, especialmente SketchUp e outros produtos da TotalCAD. Você atende vendedores brasileiros que trabalham com arquitetura, design e engenharia.
+
+EMPRESA:
+- TotalCAD é revendedora oficial dos produtos SketchUp no Brasil
+- Foco em arquitetos, designers, engenheiros e estudantes  
+- Mercado brasileiro com suas particularidades de preço e necessidades
+- Concorrentes principais: AutoCAD, Revit, ArchiCAD, softwares nacionais
+
+${expertiseContext}
+
+OBJEÇÕES MAIS COMUNS (quando não há conhecimento específico):
+1. "Muito caro" → ROI através de produtividade e qualidade
+2. "Equipe não vai se adaptar" → Facilidade de aprendizado e suporte
+3. "Já temos outra solução" → Complementaridade e casos específicos
+4. "Não conhecemos" → Cases de sucesso e demonstrações
+5. "Não precisa disso" → Impacto visual em aprovações e vendas
+
+TOM DA CONVERSA: ${selectedTone}
+
+Sempre forneça:
+- Respostas práticas e aplicáveis ao contexto brasileiro
+- Valores em reais quando possível
+- Casos de uso específicos por área (residencial, comercial, paisagismo)
+- Comparações justas com concorrentes quando relevante
+- Próximos passos claros (demo, orçamento, teste)
+- Use o conhecimento especializado dos softwares selecionados pelo usuário
+
+Não invente preços ou dados técnicos que você não tem certeza. Se não souber algo específico, seja honesto e sugira onde buscar a informação.`;
+
+    console.log('System prompt created with tone:', chatTone, 'and', softwareKnowledge.length, 'software expertise');
+
+    // Process attachments if any
     const processedAttachments = [];
     if (attachments && attachments.length > 0) {
-      systemPrompt += `\n\nCONTEXTO ADICIONAL: O usuário enviou ${attachments.length} arquivo(s). Analise o conteúdo e incorpore na sua resposta de vendas.`;
-      
       for (const attachment of attachments) {
-        if (attachment.type.startsWith('image/')) {
-          // Para imagens, converter para base64 e incluir no prompt
+        if (attachment.type && attachment.type.startsWith('image/') && attachment.url) {
           try {
             const response = await fetch(attachment.url);
             const arrayBuffer = await response.arrayBuffer();
@@ -160,10 +178,8 @@ Responda sempre em português brasileiro com foco em vendas seguindo o tom perso
               name: attachment.name
             });
           } catch (error) {
-            console.error('Erro ao processar imagem:', error);
+            console.error('Error processing image:', error);
           }
-        } else if (attachment.type === 'application/pdf') {
-          systemPrompt += `\n\nPDF anexado: ${attachment.name} - Analise este documento e forneça insights de vendas relevantes.`;
         }
       }
     }
@@ -220,14 +236,14 @@ Responda sempre em português brasileiro com foco em vendas seguindo o tom perso
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('Erro da API Gemini:', response.status, errorData);
-      throw new Error(`Erro da API Gemini: ${response.status}`);
+      console.error('Gemini API Error:', response.status, errorData);
+      throw new Error(`Gemini API Error: ${response.status}`);
     }
 
     const data = await response.json();
     
     if (!data.candidates || data.candidates.length === 0) {
-      throw new Error('Nenhuma resposta gerada pelo Gemini');
+      throw new Error('No response generated by Gemini');
     }
 
     const aiResponse = data.candidates[0].content.parts[0].text;
@@ -240,10 +256,10 @@ Responda sempre em português brasileiro com foco em vendas seguindo o tom perso
     );
 
   } catch (error) {
-    console.error('Erro na função ai-chat-gemini:', error);
+    console.error('Error in ai-chat-gemini function:', error);
     return new Response(
       JSON.stringify({ 
-        error: 'Erro interno do servidor',
+        error: 'Internal server error',
         details: error.message 
       }),
       {
