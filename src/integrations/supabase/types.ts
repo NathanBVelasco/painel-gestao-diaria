@@ -16,23 +16,35 @@ export type Database = {
     Tables: {
       ai_chat_preferences: {
         Row: {
+          active_software_focus: string | null
           chat_tone: string
           created_at: string
+          custom_instructions: string | null
+          expertise_template: string | null
           id: string
+          selected_expertise: string[] | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          active_software_focus?: string | null
           chat_tone?: string
           created_at?: string
+          custom_instructions?: string | null
+          expertise_template?: string | null
           id?: string
+          selected_expertise?: string[] | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          active_software_focus?: string | null
           chat_tone?: string
           created_at?: string
+          custom_instructions?: string | null
+          expertise_template?: string | null
           id?: string
+          selected_expertise?: string[] | null
           updated_at?: string
           user_id?: string
         }
@@ -65,6 +77,93 @@ export type Database = {
           message?: string
           response?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      ai_expertise_categories: {
+        Row: {
+          category: Database["public"]["Enums"]["software_category"]
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["software_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["software_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_software_knowledge: {
+        Row: {
+          category: Database["public"]["Enums"]["software_category"]
+          common_objections: string | null
+          competitors: string | null
+          created_at: string
+          description: string | null
+          differentials: string | null
+          id: string
+          integration_benefits: string | null
+          is_active: boolean
+          pricing_strategy: string | null
+          roi_points: string | null
+          sales_scripts: string | null
+          software_name: string
+          target_audience: string | null
+          updated_at: string
+          use_cases: string | null
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["software_category"]
+          common_objections?: string | null
+          competitors?: string | null
+          created_at?: string
+          description?: string | null
+          differentials?: string | null
+          id?: string
+          integration_benefits?: string | null
+          is_active?: boolean
+          pricing_strategy?: string | null
+          roi_points?: string | null
+          sales_scripts?: string | null
+          software_name: string
+          target_audience?: string | null
+          updated_at?: string
+          use_cases?: string | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["software_category"]
+          common_objections?: string | null
+          competitors?: string | null
+          created_at?: string
+          description?: string | null
+          differentials?: string | null
+          id?: string
+          integration_benefits?: string | null
+          is_active?: boolean
+          pricing_strategy?: string | null
+          roi_points?: string | null
+          sales_scripts?: string | null
+          software_name?: string
+          target_audience?: string | null
+          updated_at?: string
+          use_cases?: string | null
         }
         Relationships: []
       }
@@ -383,6 +482,12 @@ export type Database = {
     }
     Enums: {
       product_type: "trimble" | "chaos"
+      software_category:
+        | "modelagem_3d"
+        | "renderizacao"
+        | "colaboracao"
+        | "animacao"
+        | "documentacao"
       user_role: "vendedor" | "gestor"
     }
     CompositeTypes: {
@@ -512,6 +617,13 @@ export const Constants = {
   public: {
     Enums: {
       product_type: ["trimble", "chaos"],
+      software_category: [
+        "modelagem_3d",
+        "renderizacao",
+        "colaboracao",
+        "animacao",
+        "documentacao",
+      ],
       user_role: ["vendedor", "gestor"],
     },
   },

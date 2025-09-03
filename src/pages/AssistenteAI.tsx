@@ -1,15 +1,18 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Send, Bot, Lightbulb, Target, MessageSquare, FileText, Phone, Mail, Paperclip, Image, File as FileIcon, X, Settings, User } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { MessageCircle, Send, Loader2, Paperclip, X, Bot, User, Settings, FileText, Image, File, Lightbulb, Target, MessageSquare, Mail, Phone } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { AIExpertiseConfig } from "@/components/AIExpertiseConfig";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -35,331 +38,67 @@ interface Suggestion {
 }
 
 const AssistenteAI = () => {
-  const { toast } = useToast();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const { user } = useAuth();
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [messages, setMessages] = useState<Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    attachments?: Array<{name: string; type: string; size: number; url: string}>;
+  }>>([]);
   const [chatTone, setChatTone] = useState("amigavel");
-  const [savingPreference, setSavingPreference] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const loadUserPreferences = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('ai_chat_preferences')
-        .select('chat_tone')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 = not found
-        console.error('Erro ao carregar preferências:', error);
-        return;
-      }
-
-      if (data) {
-        setChatTone(data.chat_tone);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar preferências:', error);
-    }
-  };
-
-  const saveUserPreference = async (newTone: string) => {
-    setSavingPreference(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error } = await supabase
-        .from('ai_chat_preferences')
-        .upsert(
-          { user_id: user.id, chat_tone: newTone },
-          { onConflict: 'user_id' }
-        );
-
-      if (error) {
-        console.error('Erro ao salvar preferência:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível salvar a preferência",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      setChatTone(newTone);
-      toast({
-        title: "Preferência salva",
-        description: "Tom de resposta atualizado com sucesso",
-      });
-    } catch (error) {
-      console.error('Erro ao salvar preferência:', error);
-    } finally {
-      setSavingPreference(false);
-    }
-  };
-
-  const loadConversations = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('ai_conversations')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('Erro ao carregar conversas:', error);
-        return;
-      }
-
-      if (data) {
-        // Converter dados do Supabase para nosso tipo
-        const convertedData: Conversation[] = data.map(conv => ({
-          ...conv,
-          attachments: Array.isArray(conv.attachments) ? conv.attachments as Array<{name: string; type: string; size: number; url: string}> : []
-        }));
-        setConversations(convertedData);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar conversas:', error);
-    }
-  };
-
-  const uploadFiles = async (files: File[]): Promise<Array<{name: string; type: string; size: number; url: string}>> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Usuário não autenticado');
-
-    const uploadedFiles = [];
+  const sendMessage = async () => {
+    if (!message.trim() && attachments.length === 0) return;
     
-    for (const file of files) {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}-${file.name}`;
-      
-      const { data, error } = await supabase.storage
-        .from('chat-attachments')
-        .upload(fileName, file);
-
-      if (error) {
-        console.error('Erro no upload:', error);
-        throw error;
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('chat-attachments')
-        .getPublicUrl(fileName);
-
-      uploadedFiles.push({
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        url: publicUrl
-      });
-    }
-
-    return uploadedFiles;
-  };
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    const validFiles = files.filter(file => {
-      const isImage = file.type.startsWith('image/');
-      const isPDF = file.type === 'application/pdf';
-      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
-      
-      if (!isImage && !isPDF) {
-        toast({
-          title: "Arquivo não suportado",
-          description: `${file.name} não é uma imagem ou PDF`,
-          variant: "destructive"
-        });
-        return false;
-      }
-      
-      if (!isValidSize) {
-        toast({
-          title: "Arquivo muito grande",
-          description: `${file.name} excede o limite de 10MB`,
-          variant: "destructive"
-        });
-        return false;
-      }
-      
-      return true;
-    });
-
-    setSelectedFiles(prev => [...prev, ...validFiles]);
-  };
-
-  const removeFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handlePaste = (event: React.ClipboardEvent) => {
-    const items = event.clipboardData?.items;
-    if (!items) return;
-
-    const files: File[] = [];
-    
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile();
-        if (file) {
-          // Criar um nome para o arquivo colado
-          const timestamp = new Date().getTime();
-          const extension = item.type.split('/')[1];
-          const newFile = new File([file], `imagem-colada-${timestamp}.${extension}`, {
-            type: item.type
-          });
-          files.push(newFile);
-        }
-      }
-    }
-
-    if (files.length > 0) {
-      // Verificar tamanho dos arquivos
-      const validFiles = files.filter(file => {
-        const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
-        
-        if (!isValidSize) {
-          toast({
-            title: "Arquivo muito grande",
-            description: "A imagem colada excede o limite de 10MB",
-            variant: "destructive"
-          });
-          return false;
-        }
-        
-        return true;
-      });
-
-      if (validFiles.length > 0) {
-        setSelectedFiles(prev => [...prev, ...validFiles]);
-        toast({
-          title: "Imagem colada",
-          description: `${validFiles.length} imagem(ns) adicionada(s) ao chat`,
-        });
-      }
-    }
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if ((!message.trim() && selectedFiles.length === 0) || loading || uploading) return;
-
-    const userMessage = message;
-    const filesToUpload = [...selectedFiles];
+    setIsLoading(true);
+    const userMessage = { role: 'user' as const, content: message, attachments: [] };
+    setMessages(prev => [...prev, userMessage]);
     setMessage("");
-    setSelectedFiles([]);
-    setLoading(true);
-    setUploading(true);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "Erro de autenticação",
-          description: "Você precisa estar logado para usar o assistente",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Upload dos arquivos se houver
-      let uploadedFiles: Array<{name: string; type: string; size: number; url: string}> = [];
-      if (filesToUpload.length > 0) {
-        uploadedFiles = await uploadFiles(filesToUpload);
-      }
-
-      setUploading(false);
-
-      // Gerar resposta da IA com contexto dos arquivos
-      const aiResponse = await generateAIResponse(userMessage, uploadedFiles);
-
-      // Salvar conversa no banco
-      const { data, error } = await supabase
-        .from('ai_conversations')
-        .insert({
-          user_id: user.id,
-          message: userMessage,
-          response: aiResponse,
-          attachments: uploadedFiles,
-          attachment_urls: uploadedFiles.map(f => f.url)
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Erro ao salvar conversa:', error);
-        toast({
-          title: "Erro ao salvar",
-          description: "Não foi possível salvar a conversa",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      if (data) {
-        const convertedData: Conversation = {
-          ...data,
-          attachments: Array.isArray(data.attachments) ? data.attachments as Array<{name: string; type: string; size: number; url: string}> : []
-        };
-        setConversations(prev => [...prev, convertedData]);
-      }
-
-    } catch (error) {
-      console.error('Erro:', error);
-      toast({
-        title: "Erro",
-        description: "Ocorreu um erro ao processar sua mensagem",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-      setUploading(false);
-    }
-  };
-
-  const generateAIResponse = async (userMessage: string, attachments?: Array<{name: string; type: string; size: number; url: string}>): Promise<string> => {
+    
     try {
       const { data, error } = await supabase.functions.invoke('ai-chat-gemini', {
-        body: { 
-          message: userMessage,
-          attachments: attachments || [],
-          chatTone: chatTone
-        }
+        body: { message: userMessage.content, chatTone }
       });
-
-      if (error) {
-        console.error('Erro na função AI:', error);
-        throw error;
-      }
-
-      return data.response || 'Desculpe, não consegui gerar uma resposta no momento.';
+      
+      if (error) throw error;
+      
+      setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
     } catch (error) {
-      console.error('Erro ao gerar resposta da IA:', error);
-      throw error;
+      console.error('Error:', error);
+      toast.error("Erro ao enviar mensagem");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadUserPreferences();
-    loadConversations();
-  }, []);
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessage(e.target.value);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setAttachments(files);
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [conversations]);
+  }, [messages]);
 
   // Predefined suggestions
   const suggestions: Suggestion[] = [

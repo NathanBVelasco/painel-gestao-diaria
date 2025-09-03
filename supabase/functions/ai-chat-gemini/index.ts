@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,15 +14,70 @@ serve(async (req) => {
   }
 
   try {
-    const { message, attachments = [], chatTone = 'amigavel' } = await req.json();
+    const { message, attachments, chatTone } = await req.json();
 
-    if (!message && attachments.length === 0) {
-      throw new Error('Mensagem ou anexos são obrigatórios');
+    if (!message && (!attachments || attachments.length === 0)) {
+      return new Response(
+        JSON.stringify({ error: 'Message or attachments are required' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
     if (!geminiApiKey) {
-      throw new Error('GEMINI_API_KEY não configurada');
+      return new Response(
+        JSON.stringify({ error: 'Gemini API key not configured' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Initialize Supabase client
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+
+    // Get user from authorization header
+    const authHeader = req.headers.get('authorization');
+    let userId = null;
+    let userPreferences = null;
+    let softwareKnowledge = [];
+
+    if (authHeader) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+        userId = user?.id;
+
+        if (userId) {
+          // Get user AI preferences
+          const { data: preferences } = await supabase
+            .from('ai_chat_preferences')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+
+          userPreferences = preferences;
+
+          // Get software knowledge based on user's selected expertise
+          if (preferences?.selected_expertise && preferences.selected_expertise.length > 0) {
+            const { data: knowledge } = await supabase
+              .from('ai_software_knowledge')
+              .select('*')
+              .in('software_name', preferences.selected_expertise)
+              .eq('is_active', true);
+
+            softwareKnowledge = knowledge || [];
+          }
+        }
+      } catch (error) {
+        console.log('Could not get user preferences:', error);
+      }
     }
 
     // Definir as características de cada tom
