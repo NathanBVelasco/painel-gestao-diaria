@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Send, Bot, Lightbulb, Target, MessageSquare, FileText, Phone, Mail, Paperclip, Image, File as FileIcon, X, Settings, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { format, isToday, isYesterday, isSameDay } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface Conversation {
   id: string;
@@ -434,6 +436,31 @@ Abraço,
     }
   };
 
+  // Helper functions for date/time formatting
+  const formatMessageTime = (dateString: string) => {
+    return format(new Date(dateString), "HH:mm", { locale: ptBR });
+  };
+
+  const formatDateSeparator = (dateString: string) => {
+    const date = new Date(dateString);
+    if (isToday(date)) {
+      return "Hoje";
+    } else if (isYesterday(date)) {
+      return "Ontem";  
+    } else {
+      return format(date, "d 'de' MMMM", { locale: ptBR });
+    }
+  };
+
+  const shouldShowDateSeparator = (currentDate: string, previousDate?: string) => {
+    if (!previousDate) return true;
+    
+    const current = new Date(currentDate);
+    const previous = new Date(previousDate);
+    
+    return !isSameDay(current, previous);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -511,6 +538,15 @@ Abraço,
 
                   {conversations.map((conv, index) => (
                     <div key={index} className="space-y-4">
+                      {/* Date separator */}
+                      {shouldShowDateSeparator(conv.created_at, conversations[index - 1]?.created_at) && (
+                        <div className="flex justify-center my-4">
+                          <div className="bg-muted/80 text-muted-foreground text-xs px-3 py-1 rounded-full">
+                            {formatDateSeparator(conv.created_at)}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Mensagem do usuário */}
                       <div className="flex gap-3 justify-end">
                         <div className="max-w-[80%] space-y-2">
@@ -537,8 +573,13 @@ Abraço,
                               ))}
                             </div>
                           )}
-                          <div className="bg-primary text-primary-foreground p-3 rounded-lg">
+                          <div className="bg-primary text-primary-foreground p-3 rounded-lg relative">
                             <p className="text-sm">{conv.message}</p>
+                            <div className="text-right mt-2">
+                              <span className="text-xs text-primary-foreground/70">
+                                {formatMessageTime(conv.created_at)}
+                              </span>
+                            </div>
                           </div>
                         </div>
                         <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
@@ -551,7 +592,7 @@ Abraço,
                         <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
                           <Bot className="h-4 w-4 text-primary-foreground" />
                         </div>
-                        <div className="max-w-[80%] bg-muted p-3 rounded-lg">
+                        <div className="max-w-[80%] bg-muted p-3 rounded-lg relative">
                           <div className="prose prose-sm max-w-none">
                             {conv.response.split('\n').map((paragraph, pIndex) => (
                               <p key={pIndex} className="mb-2 last:mb-0 text-sm" 
@@ -560,6 +601,11 @@ Abraço,
                                  }}
                               />
                             ))}
+                          </div>
+                          <div className="text-left mt-2">
+                            <span className="text-xs text-muted-foreground">
+                              {formatMessageTime(conv.created_at)}
+                            </span>
                           </div>
                         </div>
                       </div>
