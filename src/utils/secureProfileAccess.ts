@@ -2,15 +2,16 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Securely get team member profiles for gestors
- * This function uses a database function that only returns safe fields (no emails)
+ * SECURE: Get team member profiles for gestors (NO EMAIL ACCESS)
+ * This function uses a hardened database function that only returns safe fields
+ * CRITICAL: Emails are completely protected and never exposed
  */
 export const getTeamProfilesForGestor = async () => {
   try {
-    const { data, error } = await supabase.rpc('get_team_profiles_for_gestor');
+    const { data, error } = await supabase.rpc('get_secure_team_basic_info');
     
     if (error) {
-      console.error('Error fetching team profiles:', error);
+      console.error('Error fetching secure team profiles:', error);
       throw error;
     }
     
@@ -22,13 +23,13 @@ export const getTeamProfilesForGestor = async () => {
 };
 
 /**
- * Securely get basic team info for ranking and general purposes
- * This function uses a database function that only returns safe fields (no emails)
- * Available to all authenticated users
+ * SECURE: Get basic team info for ranking and general purposes
+ * This function uses a hardened database function that only returns safe fields (NO EMAILS)
+ * Available only to authenticated gestors
  */
 export const getBasicTeamInfo = async () => {
   try {
-    const { data, error } = await supabase.rpc('get_basic_team_info');
+    const { data, error } = await supabase.rpc('get_secure_team_basic_info');
     
     if (error) {
       console.error('Error fetching basic team info:', error);
@@ -39,6 +40,26 @@ export const getBasicTeamInfo = async () => {
   } catch (error) {
     console.error('Security error in getBasicTeamInfo:', error);
     throw new Error('Failed to fetch team information');
+  }
+};
+
+/**
+ * SECURE: Get user's own email address only
+ * Users can only access their own email, never others'
+ */
+export const getOwnEmail = async () => {
+  try {
+    const { data, error } = await supabase.rpc('get_own_email');
+    
+    if (error) {
+      console.error('Error fetching own email:', error);
+      throw error;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Security error in getOwnEmail:', error);
+    throw new Error('Failed to fetch email information');
   }
 };
 

@@ -441,19 +441,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_basic_team_info: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          name: string
-          role: Database["public"]["Enums"]["user_role"]
-          user_id: string
-        }[]
-      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
-      get_team_profiles_for_gestor: {
+      get_own_email: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_secure_team_basic_info: {
         Args: Record<PropertyKey, never>
         Returns: {
           name: string

@@ -58,19 +58,19 @@ const Ranking = () => {
         let profiles;
         
         try {
-          const { data, error } = await supabase.rpc('get_team_profiles_for_gestor');
+          const { data, error } = await supabase.rpc('get_secure_team_basic_info');
           if (error) throw error;
           profiles = data;
         } catch (error) {
           console.error('Error fetching team profiles:', error);
-          // Fallback to secure function if gestor function fails
-          const { data, error: fallbackError } = await supabase.rpc('get_basic_team_info');
+          // Fallback - if this also fails, we'll handle it below
+          const { data, error: fallbackError } = await supabase.rpc('get_secure_team_basic_info');
           
           if (fallbackError) throw fallbackError;
           profiles = data;
         }
 
-        if (!profiles) {
+        if (!profiles || !Array.isArray(profiles)) {
           toast({
             title: "Erro",
             description: "Não foi possível carregar os perfis",

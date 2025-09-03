@@ -118,14 +118,14 @@ const Dashboard = () => {
 
   const loadSellers = async () => {
     try {
-      const { data: profiles, error } = await supabase.rpc('get_basic_team_info');
+      const { data: profiles, error } = await supabase.rpc('get_secure_team_basic_info');
 
       if (error) {
         console.error("Error loading sellers:", error);
         return;
       }
 
-      setSellers(profiles?.map(p => ({ id: p.user_id, name: p.name })) || []);
+      setSellers(profiles && Array.isArray(profiles) ? profiles.map(p => ({ id: p.user_id, name: p.name })) : []);
     } catch (error) {
       console.error("Error loading sellers:", error);
     }

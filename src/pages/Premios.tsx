@@ -256,19 +256,19 @@ const Premios = () => {
 
   const loadProfiles = async () => {
     try {
-      const { data, error } = await supabase.rpc('get_basic_team_info');
+      const { data, error } = await supabase.rpc('get_secure_team_basic_info');
 
       if (error) {
         console.error("Error loading profiles:", error);
         return;
       }
 
-      setProfiles(data?.map(item => ({
+      setProfiles(data && Array.isArray(data) ? data.map(item => ({
         id: item.user_id, // Use user_id as id
         user_id: item.user_id,
         name: item.name,
         role: item.role === 'vendedor' ? 'vendedor' : 'gestor'
-      })) || []);
+      })) : []);
     } catch (error) {
       console.error("Error loading profiles:", error);
     }
@@ -290,9 +290,9 @@ const Premios = () => {
       }
 
       // Get all vendedor profiles using secure function
-      const { data: vendedorProfiles, error: profilesError } = await supabase.rpc('get_basic_team_info');
+      const { data: vendedorProfiles, error: profilesError } = await supabase.rpc('get_secure_team_basic_info');
 
-      if (profilesError || !vendedorProfiles) {
+      if (profilesError || !vendedorProfiles || !Array.isArray(vendedorProfiles)) {
         console.error("Error loading profiles for progress:", profilesError);
         return;
       }

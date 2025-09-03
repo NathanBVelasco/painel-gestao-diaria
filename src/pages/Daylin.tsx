@@ -232,7 +232,7 @@ const Daylin = () => {
       const queryDate = date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
       
       // Get all sellers (vendedor role) using secure function
-      const { data: sellers, error: sellersError } = await supabase.rpc('get_basic_team_info');
+      const { data: sellers, error: sellersError } = await supabase.rpc('get_secure_team_basic_info');
 
       if (sellersError) {
         console.error("Error loading sellers:", sellersError);
@@ -305,7 +305,7 @@ const Daylin = () => {
       const lastDayOfMonth = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
       
       // Get all sellers using secure function
-      const { data: sellers, error: sellersError } = await supabase.rpc('get_basic_team_info');
+      const { data: sellers, error: sellersError } = await supabase.rpc('get_secure_team_basic_info');
 
       if (sellersError) {
         console.error("Error loading sellers:", sellersError);
