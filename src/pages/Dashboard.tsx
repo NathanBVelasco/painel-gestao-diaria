@@ -294,33 +294,57 @@ const Dashboard = () => {
     }
   };
 
-  const generateChartData = (reports: any[]) => {
-    const last5BusinessDays = [];
-    const today = new Date();
-    let currentDate = new Date(today);
-    let daysAdded = 0;
+  const generateChartData = async () => {
+    try {
+      const last5BusinessDays = [];
+      const today = new Date();
+      let currentDate = new Date(today);
+      let daysAdded = 0;
 
-    while (daysAdded < 5) {
-      // Skip weekends (0 = Sunday, 6 = Saturday)
-      if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
-        const dateStr = currentDate.toISOString().split('T')[0];
-        const dayReports = reports.filter(r => r.date === dateStr);
+      const businessDates = [];
+      while (daysAdded < 5) {
+        // Skip weekends (0 = Sunday, 6 = Saturday)
+        if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
+          businessDates.push(currentDate.toISOString().split('T')[0]);
+          daysAdded++;
+        }
+        currentDate.setDate(currentDate.getDate() - 1);
+      }
+
+      // Query for the last 5 business days
+      let query = supabase
+        .from("daily_reports")
+        .select("date, forecast_amount, sales_amount")
+        .in("date", businessDates);
+
+      // Apply user filter based on role
+      if (profile?.role === "gestor" && selectedSeller) {
+        query = query.eq("user_id", selectedSeller);
+      } else if (profile?.role === "vendedor") {
+        query = query.eq("user_id", profile?.user_id);
+      }
+
+      const { data: chartReports } = await query;
+
+      // Process the data for chart
+      businessDates.reverse().forEach(dateStr => {
+        const dayReports = chartReports?.filter(r => r.date === dateStr) || [];
         
         const dayForecast = dayReports.reduce((sum, r) => sum + (r.forecast_amount || 0), 0);
         const dayVendas = dayReports.reduce((sum, r) => sum + (r.sales_amount || 0), 0);
 
-        last5BusinessDays.unshift({
-          day: currentDate.toLocaleDateString('pt-BR', { weekday: 'short' }),
+        const date = new Date(dateStr);
+        last5BusinessDays.push({
+          day: date.toLocaleDateString('pt-BR', { weekday: 'short' }),
           forecast: dayForecast,
           vendas: dayVendas,
         });
-        
-        daysAdded++;
-      }
-      currentDate.setDate(currentDate.getDate() - 1);
-    }
+      });
 
-    setChartData(last5BusinessDays);
+      setChartData(last5BusinessDays);
+    } catch (error) {
+      console.error("Error loading chart data:", error);
+    }
   };
 
   const formatCurrency = (value: number) => {
