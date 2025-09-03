@@ -514,7 +514,7 @@ Abraço,
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="flex flex-col h-[500px]">
+            <div className="flex flex-col h-[650px]">
               {/* Messages */}
               <ScrollArea className="flex-1 p-4">
                 <div className="space-y-4">
