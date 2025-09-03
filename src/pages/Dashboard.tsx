@@ -481,7 +481,7 @@ const Dashboard = () => {
 
         <Card className="card-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">🗓️ Nº Licenças a Renovar</CardTitle>
+            <CardTitle className="text-sm font-medium">🗓️ Nº Licenças a Renovar (Semana)</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -491,7 +491,7 @@ const Dashboard = () => {
 
         <Card className="card-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">✅ Renovado</CardTitle>
+            <CardTitle className="text-sm font-medium">✅ Renovado (Semana)</CardTitle>
             <CheckCircle className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
@@ -506,7 +506,7 @@ const Dashboard = () => {
 
         <Card className="card-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">❌ Churn</CardTitle>
+            <CardTitle className="text-sm font-medium">❌ Churn (Semana)</CardTitle>
             <XCircle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
