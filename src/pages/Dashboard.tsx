@@ -246,33 +246,24 @@ const Dashboard = () => {
             }
           });
           
-          // Sum ALL "renovado" from all team reports in the period (calculate as difference)
+          // Sum ALL "renovado" from latest reports of all team members (use accumulated totals)
           if (licenseReports && licenseReports.length > 0) {
-            // Group reports by user and calculate difference for each user
-            const userReports = new Map();
+            // Get latest report per user and sum accumulated totals
+            const userLatestReports = new Map();
             licenseReports.forEach(report => {
-              if (!userReports.has(report.user_id)) {
-                userReports.set(report.user_id, []);
+              const currentLatest = userLatestReports.get(report.user_id);
+              if (!currentLatest || new Date(report.date) > new Date(currentLatest.date)) {
+                userLatestReports.set(report.user_id, report);
               }
-              userReports.get(report.user_id).push(report);
             });
             
-            // Calculate difference for each user and sum
-            userReports.forEach(reports => {
-              const sortedReports = reports.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-              const firstReport = sortedReports[0];
-              const lastReport = sortedReports[sortedReports.length - 1];
-              
-              const initialSketchupRenewed = firstReport.sketchup_renewed || 0;
-              const finalSketchupRenewed = lastReport.sketchup_renewed || 0;
-              const initialChaosRenewed = firstReport.chaos_renewed || 0;
-              const finalChaosRenewed = lastReport.chaos_renewed || 0;
-              
+            // Sum accumulated totals from each user's latest report
+            userLatestReports.forEach(report => {
               if (product === "TRIMBLE" || product === "TODOS") {
-                licensePeriodTotals.renovadoQty += Math.max(0, finalSketchupRenewed - initialSketchupRenewed);
+                licensePeriodTotals.renovadoQty += report.sketchup_renewed || 0;
               }
               if (product === "CHAOS" || product === "TODOS") {
-                licensePeriodTotals.renovadoQty += Math.max(0, finalChaosRenewed - initialChaosRenewed);
+                licensePeriodTotals.renovadoQty += report.chaos_renewed || 0;
               }
             });
           }
@@ -291,37 +282,18 @@ const Dashboard = () => {
             }
           }
 
-          // Calculate renovado as difference between last valid report and previous week end
+          // Use accumulated total from latest report
           if (licenseReports && licenseReports.length > 0) {
-            const sortedReports = licenseReports.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-            const finalReport = sortedReports[sortedReports.length - 1];
+            const sortedReports = licenseReports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            const latestReport = sortedReports[0];
             
-            // Query for the last day of previous week to get initial values
-            const previousWeekEnd = new Date(licenseStartDate);
-            previousWeekEnd.setDate(licenseStartDate.getDate() - 1);
-            
-            let initialQuery = supabase.from("daily_reports").select("*");
-            if (!isGestor) {
-              initialQuery = initialQuery.eq("user_id", profile.user_id);
-            } else if (selectedSeller !== "TODOS") {
-              initialQuery = initialQuery.eq("user_id", selectedSeller);
-            }
-            
-            const { data: previousWeekData } = await initialQuery
-              .lte("date", previousWeekEnd.toISOString().split('T')[0])
-              .order("date", { ascending: false })
-              .limit(1);
-            
-            const initialSketchupRenewed = previousWeekData?.[0]?.sketchup_renewed || 0;
-            const initialChaosRenewed = previousWeekData?.[0]?.chaos_renewed || 0;
-            const finalSketchupRenewed = finalReport.sketchup_renewed || 0;
-            const finalChaosRenewed = finalReport.chaos_renewed || 0;
-            
-            if (product === "TRIMBLE" || product === "TODOS") {
-              licensePeriodTotals.renovadoQty += Math.max(0, finalSketchupRenewed - initialSketchupRenewed);
-            }
-            if (product === "CHAOS" || product === "TODOS") {
-              licensePeriodTotals.renovadoQty += Math.max(0, finalChaosRenewed - initialChaosRenewed);
+            if (latestReport) {
+              if (product === "TRIMBLE" || product === "TODOS") {
+                licensePeriodTotals.renovadoQty += latestReport.sketchup_renewed || 0;
+              }
+              if (product === "CHAOS" || product === "TODOS") {
+                licensePeriodTotals.renovadoQty += latestReport.chaos_renewed || 0;
+              }
             }
           }
         }
@@ -346,34 +318,16 @@ const Dashboard = () => {
             }
           }
           
-          // Get the last report with valid data from current month
-          const finalReport = sortedReports[sortedReports.length - 1];
+          // Use accumulated total from latest report  
+          const latestReport = sortedReports[sortedReports.length - 1];
           
-          // Query for the last day of previous month to get initial values
-          const previousMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
-          
-          let initialQuery = supabase.from("daily_reports").select("*");
-          if (!isGestor) {
-            initialQuery = initialQuery.eq("user_id", profile.user_id);
-          } else if (selectedSeller !== "TODOS") {
-            initialQuery = initialQuery.eq("user_id", selectedSeller);
-          }
-          
-          const { data: previousMonthData } = await initialQuery
-            .lte("date", previousMonthEnd.toISOString().split('T')[0])
-            .order("date", { ascending: false })
-            .limit(1);
-          
-          const initialSketchupRenewed = previousMonthData?.[0]?.sketchup_renewed || 0;
-          const initialChaosRenewed = previousMonthData?.[0]?.chaos_renewed || 0;
-          const finalSketchupRenewed = finalReport.sketchup_renewed || 0;
-          const finalChaosRenewed = finalReport.chaos_renewed || 0;
-          
-          if (product === "TRIMBLE" || product === "TODOS") {
-            licensePeriodTotals.renovadoQty += Math.max(0, finalSketchupRenewed - initialSketchupRenewed);
-          }
-          if (product === "CHAOS" || product === "TODOS") {
-            licensePeriodTotals.renovadoQty += Math.max(0, finalChaosRenewed - initialChaosRenewed);
+          if (latestReport) {
+            if (product === "TRIMBLE" || product === "TODOS") {
+              licensePeriodTotals.renovadoQty += latestReport.sketchup_renewed || 0;
+            }
+            if (product === "CHAOS" || product === "TODOS") {
+              licensePeriodTotals.renovadoQty += latestReport.chaos_renewed || 0;
+            }
           }
         }
       }
@@ -441,36 +395,12 @@ const Dashboard = () => {
         }
 
         if (latestReport) {
-          // For SEMANAL, calculate difference using previous week's end value as initial
-          const sortedWeekReports = previousWeekReports.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-          const finalReport = sortedWeekReports[sortedWeekReports.length - 1];
-          
-          // Query for the last day of the week before previous week to get initial values
-          const twoWeeksAgoEnd = new Date(previousStartDate);
-          twoWeeksAgoEnd.setDate(previousStartDate.getDate() - 1);
-          
-          let twoWeeksAgoQuery = supabase.from("daily_reports").select("*");
-          if (!isGestor) {
-            twoWeeksAgoQuery = twoWeeksAgoQuery.eq("user_id", profile.user_id);
-          } else if (selectedSeller !== "TODOS") {
-            twoWeeksAgoQuery = twoWeeksAgoQuery.eq("user_id", selectedSeller);
-          }
-          
-          const { data: twoWeeksAgoData } = await twoWeeksAgoQuery
-            .lte("date", twoWeeksAgoEnd.toISOString().split('T')[0])
-            .order("date", { ascending: false })
-            .limit(1);
-          
-          const initialSketchupRenewed = twoWeeksAgoData?.[0]?.sketchup_renewed || 0;
-          const finalSketchupRenewed = finalReport.sketchup_renewed || 0;
-          const initialChaosRenewed = twoWeeksAgoData?.[0]?.chaos_renewed || 0;
-          const finalChaosRenewed = finalReport.chaos_renewed || 0;
-          
+          // Use accumulated total from latest report of previous week
           if (product === "TRIMBLE" || product === "TODOS") {
-            previousTotals.renovadoQty = Math.max(0, finalSketchupRenewed - initialSketchupRenewed);
+            previousTotals.renovadoQty += latestReport.sketchup_renewed || 0;
           }
           if (product === "CHAOS" || product === "TODOS") {
-            previousTotals.renovadoQty += Math.max(0, finalChaosRenewed - initialChaosRenewed);
+            previousTotals.renovadoQty += latestReport.chaos_renewed || 0;
           }
         }
 
@@ -497,34 +427,16 @@ const Dashboard = () => {
             }
           }
           
-          // Calculate renovado as difference using previous month's end value as initial
-          const finalReport = lastReport;
+          // Use accumulated total from latest report of previous month
+          const latestReport = lastReport;
           
-          // Query for the last day of the month before previous month to get initial values
-          const twoMonthsAgoEnd = new Date(previousStartDate.getFullYear(), previousStartDate.getMonth() - 1, 0);
-          
-          let twoMonthsAgoQuery = supabase.from("daily_reports").select("*");
-          if (!isGestor) {
-            twoMonthsAgoQuery = twoMonthsAgoQuery.eq("user_id", profile.user_id);
-          } else if (selectedSeller !== "TODOS") {
-            twoMonthsAgoQuery = twoMonthsAgoQuery.eq("user_id", selectedSeller);
-          }
-          
-          const { data: twoMonthsAgoData } = await twoMonthsAgoQuery
-            .lte("date", twoMonthsAgoEnd.toISOString().split('T')[0])
-            .order("date", { ascending: false })
-            .limit(1);
-          
-          const initialSketchupRenewed = twoMonthsAgoData?.[0]?.sketchup_renewed || 0;
-          const finalSketchupRenewed = finalReport.sketchup_renewed || 0;
-          const initialChaosRenewed = twoMonthsAgoData?.[0]?.chaos_renewed || 0;
-          const finalChaosRenewed = finalReport.chaos_renewed || 0;
-          
-          if (product === "TRIMBLE" || product === "TODOS") {
-            previousTotals.renovadoQty += Math.max(0, finalSketchupRenewed - initialSketchupRenewed);
-          }
-          if (product === "CHAOS" || product === "TODOS") {
-            previousTotals.renovadoQty += Math.max(0, finalChaosRenewed - initialChaosRenewed);
+          if (latestReport) {
+            if (product === "TRIMBLE" || product === "TODOS") {
+              previousTotals.renovadoQty += latestReport.sketchup_renewed || 0;
+            }
+            if (product === "CHAOS" || product === "TODOS") {
+              previousTotals.renovadoQty += latestReport.chaos_renewed || 0;
+            }
           }
         }
       }
