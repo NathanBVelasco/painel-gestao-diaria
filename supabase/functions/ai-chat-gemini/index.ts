@@ -64,16 +64,14 @@ serve(async (req) => {
 
           userPreferences = preferences;
 
-          // Get software knowledge based on user's selected expertise
-          if (preferences?.selected_expertise && preferences.selected_expertise.length > 0) {
-            const { data: knowledge } = await supabase
-              .from('ai_software_knowledge')
-              .select('*')
-              .in('software_name', preferences.selected_expertise)
-              .eq('is_active', true);
+          // Get ALL software knowledge - AI is expert in everything by default
+          const { data: knowledge } = await supabase
+            .from('ai_software_knowledge')
+            .select('*')
+            .eq('is_active', true);
 
-            softwareKnowledge = knowledge || [];
-          }
+          softwareKnowledge = knowledge || [];
+          console.log('Loaded software knowledge for', softwareKnowledge.length, 'products');
         }
       } catch (error) {
         console.log('Could not get user preferences:', error);

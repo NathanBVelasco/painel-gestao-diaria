@@ -62,10 +62,8 @@ const expertiseTemplates: ExpertiseTemplate[] = [
 export function AIExpertiseConfig() {
   const { user } = useAuth();
   const [softwares, setSoftwares] = useState<SoftwareKnowledge[]>([]);
-  const [selectedSoftwares, setSelectedSoftwares] = useState<string[]>([]);
   const [activeFocus, setActiveFocus] = useState<string>("sketchup");
   const [customInstructions, setCustomInstructions] = useState<string>("");
-  const [expertiseTemplate, setExpertiseTemplate] = useState<string>("general");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -105,10 +103,8 @@ export function AIExpertiseConfig() {
       if (error && error.code !== "PGRST116") throw error;
 
       if (data) {
-        setSelectedSoftwares(Array.isArray(data.selected_expertise) ? data.selected_expertise : []);
         setActiveFocus(data.active_software_focus || "sketchup");
         setCustomInstructions(data.custom_instructions || "");
-        setExpertiseTemplate(data.expertise_template || "general");
         console.log("Loaded user preferences:", data);
       }
     } catch (error) {
@@ -127,19 +123,10 @@ export function AIExpertiseConfig() {
       // Standardize string processing for activeFocus
       const normalizedActiveFocus = activeFocus.toLowerCase().replace(/\s+/g, "_");
       
-      // Validate data before saving
-      if (selectedSoftwares.length === 0) {
-        toast.error("Selecione pelo menos um software antes de salvar");
-        setSaving(false);
-        return;
-      }
-
       const dataToSave = {
         user_id: user.id,
-        selected_expertise: selectedSoftwares,
         active_software_focus: normalizedActiveFocus,
-        custom_instructions: customInstructions.trim() || null,
-        expertise_template: expertiseTemplate
+        custom_instructions: customInstructions.trim() || null
       };
 
       console.log("Saving AI preferences:", dataToSave);
@@ -188,19 +175,9 @@ export function AIExpertiseConfig() {
   };
 
   const applyTemplate = (template: ExpertiseTemplate) => {
-    setSelectedSoftwares(template.softwares);
-    setExpertiseTemplate(template.id);
-    // Standardize string processing consistently
+    // Set focus to the first software in the template
     setActiveFocus(template.softwares[0].toLowerCase().replace(/\s+/g, "_"));
-    toast.success(`Template "${template.name}" aplicado!`);
-  };
-
-  const toggleSoftware = (software: string) => {
-    setSelectedSoftwares(prev =>
-      prev.includes(software)
-        ? prev.filter(s => s !== software)
-        : [...prev, software]
-    );
+    toast.success(`Foco definido para "${template.name}"!`);
   };
 
   const getCategoryColor = (category: string) => {
@@ -230,23 +207,21 @@ export function AIExpertiseConfig() {
             Configuração de Expertise
           </CardTitle>
           <CardDescription>
-            Configure os softwares em que a IA será especialista para suas conversas
+            A IA é especialista em todos os softwares da TotalCAD. Configure apenas o foco principal e instruções personalizadas.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Templates Pré-configurados */}
+          {/* Templates de Foco */}
           <div>
-            <Label className="text-base font-medium">Templates de Expertise</Label>
+            <Label className="text-base font-medium">Templates de Foco</Label>
             <p className="text-sm text-muted-foreground mb-4">
-              Aplique configurações pré-definidas para diferentes perfis profissionais
+              Defina rapidamente o foco principal baseado em perfis profissionais
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {expertiseTemplates.map((template) => (
                 <Card 
                   key={template.id} 
-                  className={`cursor-pointer transition-all hover:shadow-md ${
-                    expertiseTemplate === template.id ? 'ring-2 ring-primary' : ''
-                  }`}
+                  className="cursor-pointer transition-all hover:shadow-md"
                   onClick={() => applyTemplate(template)}
                 >
                   <CardContent className="p-4">
@@ -274,45 +249,31 @@ export function AIExpertiseConfig() {
 
           <Separator />
 
-          {/* Seleção de Softwares */}
+          {/* Conhecimento da IA - Read Only */}
           <div>
-            <Label className="text-base font-medium">Softwares Especializados</Label>
+            <Label className="text-base font-medium">Conhecimento da IA ✅</Label>
             <p className="text-sm text-muted-foreground mb-4">
-              Selecione os softwares em que a IA deve ter expertise
+              A IA já é especialista em todos estes softwares automaticamente
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {softwares.map((software) => (
                 <div
                   key={software.software_name}
-                  className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-muted/50"
+                  className="p-3 border rounded-lg bg-muted/20"
                 >
-                  <Checkbox
-                    id={software.software_name}
-                    checked={selectedSoftwares.includes(software.software_name)}
-                    onCheckedChange={() => toggleSoftware(software.software_name)}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Label
-                        htmlFor={software.software_name}
-                        className="font-medium cursor-pointer"
-                      >
-                        {software.software_name}
-                      </Label>
-                      <Badge 
-                        variant="outline" 
-                        className={`text-xs ${getCategoryColor(software.category)}`}
-                      >
-                        {software.category.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {software.description}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {software.target_audience}
-                    </p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="font-medium text-sm">{software.software_name}</span>
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs ${getCategoryColor(software.category)}`}
+                    >
+                      {software.category.replace('_', ' ')}
+                    </Badge>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    {software.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -331,12 +292,12 @@ export function AIExpertiseConfig() {
                 <SelectValue placeholder="Selecione o foco principal" />
               </SelectTrigger>
               <SelectContent>
-                {selectedSoftwares.map((software) => (
+                {softwares.map((software) => (
                   <SelectItem 
-                    key={software} 
-                    value={software.toLowerCase().replace(/\s+/g, "_")}
+                    key={software.software_name} 
+                    value={software.software_name.toLowerCase().replace(/\s+/g, "_")}
                   >
-                    {software}
+                    {software.software_name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -359,7 +320,7 @@ export function AIExpertiseConfig() {
 
           <Button 
             onClick={savePreferences} 
-            disabled={saving || selectedSoftwares.length === 0}
+            disabled={saving}
             className="w-full"
           >
             {saving ? (
