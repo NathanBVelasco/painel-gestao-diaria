@@ -261,24 +261,27 @@ const Dashboard = () => {
             }
           });
           
-          // Sum ALL "renovado" from latest reports of all team members (use accumulated totals)
+          // Sum ALL "renovado" from valid reports of all team members using findLastValidRenovadoReport
           if (licenseReports && licenseReports.length > 0) {
-            // Get latest report per user and sum accumulated totals
-            const userLatestReports = new Map();
+            // Group reports by user_id
+            const userReportsMap = new Map();
             licenseReports.forEach(report => {
-              const currentLatest = userLatestReports.get(report.user_id);
-              if (!currentLatest || new Date(report.date) > new Date(currentLatest.date)) {
-                userLatestReports.set(report.user_id, report);
+              if (!userReportsMap.has(report.user_id)) {
+                userReportsMap.set(report.user_id, []);
               }
+              userReportsMap.get(report.user_id).push(report);
             });
             
-            // Sum accumulated totals from each user's latest report
-            userLatestReports.forEach(report => {
-              if (product === "TRIMBLE" || product === "TODOS") {
-                licensePeriodTotals.renovadoQty += report.sketchup_renewed || 0;
-              }
-              if (product === "CHAOS" || product === "TODOS") {
-                licensePeriodTotals.renovadoQty += report.chaos_renewed || 0;
+            // For each user, find their last valid renovado report and sum
+            userReportsMap.forEach(userReports => {
+              const latestValidReport = findLastValidRenovadoReport(userReports);
+              if (latestValidReport) {
+                if (product === "TRIMBLE" || product === "TODOS") {
+                  licensePeriodTotals.renovadoQty += latestValidReport.sketchup_renewed || 0;
+                }
+                if (product === "CHAOS" || product === "TODOS") {
+                  licensePeriodTotals.renovadoQty += latestValidReport.chaos_renewed || 0;
+                }
               }
             });
           }
