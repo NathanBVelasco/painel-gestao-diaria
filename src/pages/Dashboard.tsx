@@ -852,7 +852,7 @@ const Dashboard = () => {
                 formatter={(value: number) => formatCurrency(value)}
                 labelStyle={{ color: 'hsl(var(--foreground))' }}
               />
-              <Bar dataKey="forecast" fill="hsl(var(--accent))" name="Forecast">
+              <Bar dataKey="forecast" fill="hsl(var(--blue))" name="Forecast">
                 <LabelList 
                   dataKey="forecast" 
                   position="top" 
@@ -860,7 +860,7 @@ const Dashboard = () => {
                   style={{ fontSize: '12px', fill: 'hsl(var(--foreground))', fontWeight: '600' }}
                 />
               </Bar>
-              <Bar dataKey="vendas" fill="hsl(var(--primary))" name="Vendas">
+              <Bar dataKey="vendas" fill="hsl(var(--green))" name="Vendas">
                 <LabelList 
                   dataKey="vendas" 
                   position="top" 
