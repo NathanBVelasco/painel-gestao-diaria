@@ -246,6 +246,29 @@ Não invente preços ou dados técnicos que você não tem certeza. Se não soub
 
     const aiResponse = data.candidates[0].content.parts[0].text;
 
+    // Save conversation to database if user is authenticated
+    if (userId) {
+      try {
+        const { error: saveError } = await supabase
+          .from('ai_conversations')
+          .insert({
+            user_id: userId,
+            message: message || 'Usuário enviou anexos para análise',
+            response: aiResponse,
+            attachments: attachments || [],
+            attachment_urls: (attachments || []).map(att => att.url).filter(Boolean)
+          });
+
+        if (saveError) {
+          console.error('Error saving conversation:', saveError);
+        } else {
+          console.log('Conversation saved successfully');
+        }
+      } catch (saveError) {
+        console.error('Error saving conversation:', saveError);
+      }
+    }
+
     return new Response(
       JSON.stringify({ response: aiResponse }),
       {

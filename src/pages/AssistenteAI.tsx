@@ -41,6 +41,7 @@ const AssistenteAI = () => {
   useEffect(() => {
     loadUserPreferences();
     loadSoftwareList();
+    loadConversationHistory();
   }, [user?.id]);
 
   useEffect(() => {
@@ -83,6 +84,47 @@ const AssistenteAI = () => {
       }
     } catch (error) {
       console.error('Error loading preferences:', error);
+    }
+  };
+
+  const loadConversationHistory = async () => {
+    if (!user?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('ai_conversations')
+        .select('message, response, attachments, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(50); // Load last 50 conversations
+
+      if (error) {
+        console.error('Error loading conversation history:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const historicalMessages: Message[] = [];
+        
+        data.forEach(conv => {
+          // Add user message
+          historicalMessages.push({
+            role: 'user',
+            content: conv.message,
+            attachments: Array.isArray(conv.attachments) ? conv.attachments as Array<{name: string; type: string; size: number; url?: string}> : []
+          });
+          
+          // Add AI response
+          historicalMessages.push({
+            role: 'assistant',
+            content: conv.response
+          });
+        });
+
+        setMessages(historicalMessages);
+      }
+    } catch (error) {
+      console.error('Error loading conversation history:', error);
     }
   };
 
