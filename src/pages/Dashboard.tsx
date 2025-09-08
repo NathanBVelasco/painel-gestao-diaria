@@ -263,6 +263,9 @@ const Dashboard = () => {
         query = query.lte("date", customEndDate.toISOString().split('T')[0]);
       }
 
+      // Exclude test data from 02/09/2025
+      query = query.neq("date", "2025-09-02");
+
       const { data: reports, error } = await query;
 
       if (error) {
@@ -309,6 +312,9 @@ const Dashboard = () => {
       if (period === "PERSONALIZADO" && customEndDate) {
         licenseQuery = licenseQuery.lte("date", customEndDate.toISOString().split('T')[0]);
       }
+      
+      // Exclude test data from 02/09/2025
+      licenseQuery = licenseQuery.neq("date", "2025-09-02");
       
       const { data: licenseReports } = await licenseQuery;
 
@@ -479,7 +485,8 @@ const Dashboard = () => {
       
       previousQuery = previousQuery
         .gte("date", previousStartDate.toISOString().split('T')[0])
-        .lte("date", previousEndDate.toISOString().split('T')[0]);
+        .lte("date", previousEndDate.toISOString().split('T')[0])
+        .neq("date", "2025-09-02"); // Exclude test data
 
       const { data: previousReports } = await previousQuery;
 
@@ -636,7 +643,8 @@ const Dashboard = () => {
       let query = supabase
         .from("daily_reports")
         .select("date, forecast_amount, sales_amount")
-        .in("date", businessDates);
+        .in("date", businessDates)
+        .neq("date", "2025-09-02"); // Exclude test data
 
       // Apply user filter based on role
       if (profile?.role === "gestor") {
