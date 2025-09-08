@@ -316,34 +316,113 @@ const Dashboard = () => {
         }
 
       } else if (period === "MENSAL") {
-        // For monthly: get last report of current month and previous month end
-        const sortedReports = (licenseReports || []).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        console.log("DEBUG - Monthly period logic for licenses, isGestor:", isGestor, "selectedSeller:", selectedSeller);
         
-        if (sortedReports.length > 0) {
-          // Get Monday report for "licencas a renovar" (use first Monday of the month or first available)
-          const mondayReport = sortedReports.find(report => {
-            const reportDate = new Date(report.date);
-            return reportDate.getDay() === 1;
-          }) || sortedReports[0];
+        if (isGestor && selectedSeller === "TODOS") {
+          console.log("DEBUG - Monthly aggregation for all sellers, licenseReports length:", licenseReports?.length);
           
-          if (mondayReport) {
-            if (product === "TRIMBLE" || product === "TODOS") {
-              licensePeriodTotals.licencasRenovar += mondayReport.sketchup_to_renew || 0;
+          // For gestor viewing team data: get Monday report per user for "licencas a renovar" and sum
+          const userMondayReports = new Map();
+          licenseReports?.forEach(report => {
+            const reportDate = new Date(report.date);
+            const isMonday = reportDate.getDay() === 1;
+            
+            if (isMonday) {
+              const currentMonday = userMondayReports.get(report.user_id);
+              // Keep the first Monday of the month (earliest Monday report)
+              if (!currentMonday || new Date(report.date) < new Date(currentMonday.date)) {
+                userMondayReports.set(report.user_id, report);
+              }
             }
-            if (product === "CHAOS" || product === "TODOS") {
-              licensePeriodTotals.licencasRenovar += mondayReport.chaos_to_renew || 0;
-            }
+          });
+          
+          // If no Monday reports, use first report of each user in the month
+          if (userMondayReports.size === 0) {
+            const userFirstReports = new Map();
+            licenseReports?.forEach(report => {
+              const currentFirst = userFirstReports.get(report.user_id);
+              if (!currentFirst || new Date(report.date) < new Date(currentFirst.date)) {
+                userFirstReports.set(report.user_id, report);
+              }
+            });
+            userFirstReports.forEach((report, userId) => {
+              userMondayReports.set(userId, report);
+            });
           }
           
-          // Use accumulated total from latest valid report  
-          const latestValidReport = findLastValidRenovadoReport(sortedReports);
-          
-          if (latestValidReport) {
+          // Sum "licencas a renovar" from Monday/first reports of each user
+          let totalLicencasRenovar = 0;
+          userMondayReports.forEach(report => {
             if (product === "TRIMBLE" || product === "TODOS") {
-              licensePeriodTotals.renovadoQty += latestValidReport.sketchup_renewed || 0;
+              totalLicencasRenovar += report.sketchup_to_renew || 0;
             }
             if (product === "CHAOS" || product === "TODOS") {
-              licensePeriodTotals.renovadoQty += latestValidReport.chaos_renewed || 0;
+              totalLicencasRenovar += report.chaos_to_renew || 0;
+            }
+          });
+          licensePeriodTotals.licencasRenovar += totalLicencasRenovar;
+          
+          console.log("DEBUG - Monthly licencasRenovar total:", totalLicencasRenovar);
+          
+          // Sum ALL "renovado" from valid reports of all team members using findLastValidRenovadoReport
+          if (licenseReports && licenseReports.length > 0) {
+            // Group reports by user_id
+            const userReportsMap = new Map();
+            licenseReports.forEach(report => {
+              if (!userReportsMap.has(report.user_id)) {
+                userReportsMap.set(report.user_id, []);
+              }
+              userReportsMap.get(report.user_id).push(report);
+            });
+            
+            let totalRenovado = 0;
+            // For each user, find their last valid renovado report and sum
+            userReportsMap.forEach(userReports => {
+              const latestValidReport = findLastValidRenovadoReport(userReports);
+              if (latestValidReport) {
+                if (product === "TRIMBLE" || product === "TODOS") {
+                  totalRenovado += latestValidReport.sketchup_renewed || 0;
+                }
+                if (product === "CHAOS" || product === "TODOS") {
+                  totalRenovado += latestValidReport.chaos_renewed || 0;
+                }
+              }
+            });
+            licensePeriodTotals.renovadoQty += totalRenovado;
+            
+            console.log("DEBUG - Monthly renovadoQty total:", totalRenovado);
+          }
+          
+        } else {
+          // For individual user or specific seller selected
+          const sortedReports = (licenseReports || []).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          
+          if (sortedReports.length > 0) {
+            // Get Monday report for "licencas a renovar" (use first Monday of the month or first available)
+            const mondayReport = sortedReports.find(report => {
+              const reportDate = new Date(report.date);
+              return reportDate.getDay() === 1;
+            }) || sortedReports[0];
+            
+            if (mondayReport) {
+              if (product === "TRIMBLE" || product === "TODOS") {
+                licensePeriodTotals.licencasRenovar += mondayReport.sketchup_to_renew || 0;
+              }
+              if (product === "CHAOS" || product === "TODOS") {
+                licensePeriodTotals.licencasRenovar += mondayReport.chaos_to_renew || 0;
+              }
+            }
+            
+            // Use accumulated total from latest valid report  
+            const latestValidReport = findLastValidRenovadoReport(sortedReports);
+            
+            if (latestValidReport) {
+              if (product === "TRIMBLE" || product === "TODOS") {
+                licensePeriodTotals.renovadoQty += latestValidReport.sketchup_renewed || 0;
+              }
+              if (product === "CHAOS" || product === "TODOS") {
+                licensePeriodTotals.renovadoQty += latestValidReport.chaos_renewed || 0;
+              }
             }
           }
         }
