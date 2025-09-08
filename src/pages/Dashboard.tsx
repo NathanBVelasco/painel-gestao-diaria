@@ -5,6 +5,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -14,14 +18,15 @@ import {
   Rocket, 
   RefreshCw,
   AlertTriangle,
-  Target 
+  Target,
+  CalendarIcon
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 
-type Period = "HOJE" | "SEMANAL" | "MENSAL";
+type Period = "HOJE" | "SEMANAL" | "MENSAL" | "PERSONALIZADO";
 type Product = "TRIMBLE" | "CHAOS" | "TODOS";
 
 interface DashboardData {
@@ -47,6 +52,8 @@ const Dashboard = () => {
   const [product, setProduct] = useState<Product>("TODOS");
   const [selectedSeller, setSelectedSeller] = useState<string>("TODOS");
   const [sellers, setSellers] = useState<Array<{id: string, name: string}>>([]);
+  const [customStartDate, setCustomStartDate] = useState<Date>();
+  const [customEndDate, setCustomEndDate] = useState<Date>();
   const [data, setData] = useState<DashboardData>({
     vendasTotais: 0,
     forecast: 0,
@@ -196,9 +203,21 @@ const Dashboard = () => {
         case "MENSAL":
           startDate = new Date(today.getFullYear(), today.getMonth(), 1);
           break;
+        case "PERSONALIZADO":
+          if (customStartDate) {
+            startDate = new Date(customStartDate);
+          } else {
+            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          }
+          break;
       }
 
       query = query.gte("date", startDate.toISOString().split('T')[0]);
+      
+      // Add end date filter for custom period
+      if (period === "PERSONALIZADO" && customEndDate) {
+        query = query.lte("date", customEndDate.toISOString().split('T')[0]);
+      }
 
       const { data: reports, error } = await query;
 
@@ -235,9 +254,18 @@ const Dashboard = () => {
       } else if (period === "MENSAL") {
         // For MENSAL: get current month data
         licenseStartDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      } else if (period === "PERSONALIZADO") {
+        // For PERSONALIZADO: use custom start date
+        licenseStartDate = customStartDate ? new Date(customStartDate) : new Date(today.getFullYear(), today.getMonth(), 1);
       }
 
       licenseQuery = licenseQuery.gte("date", licenseStartDate.toISOString().split('T')[0]);
+      
+      // Add end date filter for custom period  
+      if (period === "PERSONALIZADO" && customEndDate) {
+        licenseQuery = licenseQuery.lte("date", customEndDate.toISOString().split('T')[0]);
+      }
+      
       const { data: licenseReports } = await licenseQuery;
 
       if (period === "HOJE" || period === "SEMANAL") {
@@ -315,44 +343,15 @@ const Dashboard = () => {
           }
         }
 
-      } else if (period === "MENSAL") {
-        console.log("DEBUG - Monthly period logic for licenses, isGestor:", isGestor, "selectedSeller:", selectedSeller);
+      } else if (period === "MENSAL" || period === "PERSONALIZADO") {
+        console.log("DEBUG - Monthly/Custom period logic for licenses, isGestor:", isGestor, "selectedSeller:", selectedSeller);
         
         if (isGestor && selectedSeller === "TODOS") {
-          console.log("DEBUG - Monthly aggregation for all sellers, licenseReports length:", licenseReports?.length);
+          console.log("DEBUG - Monthly/Custom aggregation for all sellers, licenseReports length:", licenseReports?.length);
           
-          // For gestor viewing team data: get Monday report per user for "licencas a renovar" and sum
-          const userMondayReports = new Map();
-          licenseReports?.forEach(report => {
-            const reportDate = new Date(report.date);
-            const isMonday = reportDate.getDay() === 1;
-            
-            if (isMonday) {
-              const currentMonday = userMondayReports.get(report.user_id);
-              // Keep the first Monday of the month (earliest Monday report)
-              if (!currentMonday || new Date(report.date) < new Date(currentMonday.date)) {
-                userMondayReports.set(report.user_id, report);
-              }
-            }
-          });
-          
-          // If no Monday reports, use first report of each user in the month
-          if (userMondayReports.size === 0) {
-            const userFirstReports = new Map();
-            licenseReports?.forEach(report => {
-              const currentFirst = userFirstReports.get(report.user_id);
-              if (!currentFirst || new Date(report.date) < new Date(currentFirst.date)) {
-                userFirstReports.set(report.user_id, report);
-              }
-            });
-            userFirstReports.forEach((report, userId) => {
-              userMondayReports.set(userId, report);
-            });
-          }
-          
-          // Sum "licencas a renovar" from Monday/first reports of each user
+          // For gestor viewing team data: SUM ALL "licencas a renovar" from all reports of all users
           let totalLicencasRenovar = 0;
-          userMondayReports.forEach(report => {
+          licenseReports?.forEach(report => {
             if (product === "TRIMBLE" || product === "TODOS") {
               totalLicencasRenovar += report.sketchup_to_renew || 0;
             }
@@ -362,7 +361,7 @@ const Dashboard = () => {
           });
           licensePeriodTotals.licencasRenovar += totalLicencasRenovar;
           
-          console.log("DEBUG - Monthly licencasRenovar total:", totalLicencasRenovar);
+          console.log("DEBUG - Monthly/Custom licencasRenovar total:", totalLicencasRenovar);
           
           // Sum ALL "renovado" from valid reports of all team members using findLastValidRenovadoReport
           if (licenseReports && licenseReports.length > 0) {
@@ -390,31 +389,26 @@ const Dashboard = () => {
             });
             licensePeriodTotals.renovadoQty += totalRenovado;
             
-            console.log("DEBUG - Monthly renovadoQty total:", totalRenovado);
+            console.log("DEBUG - Monthly/Custom renovadoQty total:", totalRenovado);
           }
           
         } else {
-          // For individual user or specific seller selected
-          const sortedReports = (licenseReports || []).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-          
-          if (sortedReports.length > 0) {
-            // Get Monday report for "licencas a renovar" (use first Monday of the month or first available)
-            const mondayReport = sortedReports.find(report => {
-              const reportDate = new Date(report.date);
-              return reportDate.getDay() === 1;
-            }) || sortedReports[0];
-            
-            if (mondayReport) {
+          // For individual user or specific seller selected: SUM ALL reports
+          if (licenseReports && licenseReports.length > 0) {
+            // Sum ALL "licencas a renovar" from all reports in the period
+            let totalLicencasRenovar = 0;
+            licenseReports.forEach(report => {
               if (product === "TRIMBLE" || product === "TODOS") {
-                licensePeriodTotals.licencasRenovar += mondayReport.sketchup_to_renew || 0;
+                totalLicencasRenovar += report.sketchup_to_renew || 0;
               }
               if (product === "CHAOS" || product === "TODOS") {
-                licensePeriodTotals.licencasRenovar += mondayReport.chaos_to_renew || 0;
+                totalLicencasRenovar += report.chaos_to_renew || 0;
               }
-            }
+            });
+            licensePeriodTotals.licencasRenovar += totalLicencasRenovar;
             
             // Use accumulated total from latest valid report  
-            const latestValidReport = findLastValidRenovadoReport(sortedReports);
+            const latestValidReport = findLastValidRenovadoReport(licenseReports);
             
             if (latestValidReport) {
               if (product === "TRIMBLE" || product === "TODOS") {
@@ -448,6 +442,17 @@ const Dashboard = () => {
         // Compare with previous month
         previousStartDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
         previousEndDate = new Date(today.getFullYear(), today.getMonth(), 0);
+      } else if (period === "PERSONALIZADO") {
+        // Compare with same duration period before custom start date
+        if (customStartDate && customEndDate) {
+          const periodDuration = customEndDate.getTime() - customStartDate.getTime();
+          previousEndDate = new Date(customStartDate.getTime() - 1);
+          previousStartDate = new Date(previousEndDate.getTime() - periodDuration);
+        } else {
+          // Fallback to previous month
+          previousStartDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          previousEndDate = new Date(today.getFullYear(), today.getMonth(), 0);
+        }
       }
 
       // Query for previous period data
@@ -702,8 +707,62 @@ const Dashboard = () => {
               <SelectItem value="HOJE">Hoje</SelectItem>
               <SelectItem value="SEMANAL">Semanal</SelectItem>
               <SelectItem value="MENSAL">Mensal</SelectItem>
+              <SelectItem value="PERSONALIZADO">Personalizado</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Custom Date Range - only show when PERSONALIZADO is selected */}
+          {period === "PERSONALIZADO" && (
+            <>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-[140px] justify-start text-left font-normal",
+                      !customStartDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {customStartDate ? format(customStartDate, "dd/MM/yyyy") : "Data início"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={customStartDate}
+                    onSelect={setCustomStartDate}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-[140px] justify-start text-left font-normal",
+                      !customEndDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {customEndDate ? format(customEndDate, "dd/MM/yyyy") : "Data fim"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={customEndDate}
+                    onSelect={setCustomEndDate}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </>
+          )}
 
           <Select value={product} onValueChange={(value: Product) => setProduct(value)}>
             <SelectTrigger className="w-[120px]">
