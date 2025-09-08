@@ -362,8 +362,30 @@ const Dashboard = () => {
         console.log("DEBUG - Monthly/Custom period logic for licenses, isGestor:", isGestor, "selectedSeller:", selectedSeller);
         const isGestorAllTeam = isGestor && selectedSeller === "TODOS";
         
-        // Use the same logic as HOJE/SEMANAL - get most recent report per user
-        licensePeriodTotals.licencasRenovar = calculateLicensesToRenew(licenseReports, isGestorAllTeam);
+        // For Monthly/Custom: sum ALL "licenças a renovar" from ALL reports in the period
+        if (licenseReports && licenseReports.length > 0) {
+          console.log("DEBUG - Monthly/Custom: Processing", licenseReports.length, "reports for licenças a renovar");
+          
+          let totalLicencasRenovar = 0;
+          licenseReports.forEach(report => {
+            let reportTotal = 0;
+            if (product === "TRIMBLE" || product === "TODOS") {
+              const sketchupToRenew = report.sketchup_to_renew || 0;
+              reportTotal += sketchupToRenew;
+              console.log("DEBUG - Report", report.user_id, "sketchup_to_renew:", sketchupToRenew);
+            }
+            if (product === "CHAOS" || product === "TODOS") {
+              const chaosToRenew = report.chaos_to_renew || 0;
+              reportTotal += chaosToRenew;
+              console.log("DEBUG - Report", report.user_id, "chaos_to_renew:", chaosToRenew);
+            }
+            totalLicencasRenovar += reportTotal;
+            console.log("DEBUG - Report", report.user_id, "total to renew:", reportTotal);
+          });
+          
+          licensePeriodTotals.licencasRenovar = totalLicencasRenovar;
+          console.log("DEBUG - Monthly/Custom: Final licencasRenovar total:", totalLicencasRenovar);
+        }
         
         if (isGestorAllTeam) {
           console.log("DEBUG - Monthly/Custom aggregation for all sellers, licenseReports length:", licenseReports?.length);
