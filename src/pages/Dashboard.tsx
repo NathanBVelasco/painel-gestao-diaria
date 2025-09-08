@@ -79,7 +79,7 @@ const Dashboard = () => {
     } else {
       loadMonthlyTarget();
     }
-  }, [period, product, selectedSeller, profile]);
+  }, [period, product, selectedSeller, profile, customStartDate, customEndDate]);
 
   const loadMonthlyTarget = async () => {
     if (!profile || isGestor) return;
