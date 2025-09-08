@@ -172,6 +172,50 @@ const Dashboard = () => {
     return validReport || sortedReports[0];
   };
 
+  // Helper function to calculate licenses to renew using most recent report per user logic
+  const calculateLicensesToRenew = (licenseReports: any[], isGestorAllTeam: boolean) => {
+    let licencasRenovar = 0;
+    
+    if (isGestorAllTeam) {
+      // For gestor viewing team data: get most recent report per user and sum
+      const userLatestReports = new Map();
+      licenseReports?.forEach(report => {
+        const currentLatest = userLatestReports.get(report.user_id);
+        if (!currentLatest || new Date(report.date) > new Date(currentLatest.date)) {
+          userLatestReports.set(report.user_id, report);
+        }
+      });
+      
+      console.log("DEBUG - Most recent reports per user:", userLatestReports.size);
+      
+      // Sum "licencas a renovar" from most recent report of each user
+      userLatestReports.forEach(report => {
+        const userLicenses = ((product === "TRIMBLE" || product === "TODOS") ? (report.sketchup_to_renew || 0) : 0) +
+                           ((product === "CHAOS" || product === "TODOS") ? (report.chaos_to_renew || 0) : 0);
+        licencasRenovar += userLicenses;
+        console.log(`DEBUG - User ${report.user_id}: ${userLicenses} licenses to renew`);
+      });
+      
+    } else {
+      // For individual user or specific seller selected: get most recent report
+      const mostRecentReport = licenseReports
+        ?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+      
+      if (mostRecentReport) {
+        if (product === "TRIMBLE" || product === "TODOS") {
+          licencasRenovar += mostRecentReport.sketchup_to_renew || 0;
+        }
+        if (product === "CHAOS" || product === "TODOS") {
+          licencasRenovar += mostRecentReport.chaos_to_renew || 0;
+        }
+        console.log(`DEBUG - Single user licenses to renew: ${licencasRenovar}`);
+      }
+    }
+    
+    console.log(`DEBUG - Total licenses to renew calculated: ${licencasRenovar}`);
+    return licencasRenovar;
+  };
+
   const loadDashboardData = async () => {
     if (!profile) return;
 
@@ -269,26 +313,10 @@ const Dashboard = () => {
       const { data: licenseReports } = await licenseQuery;
 
       if (period === "HOJE" || period === "SEMANAL") {
-        if (isGestor && selectedSeller === "TODOS") {
-          // For gestor viewing team data: get most recent report per user and sum
-          const userLatestReports = new Map();
-          licenseReports?.forEach(report => {
-            const currentLatest = userLatestReports.get(report.user_id);
-            if (!currentLatest || new Date(report.date) > new Date(currentLatest.date)) {
-              userLatestReports.set(report.user_id, report);
-            }
-          });
-          
-          // Sum "licencas a renovar" from most recent report of each user
-          userLatestReports.forEach(report => {
-            if (product === "TRIMBLE" || product === "TODOS") {
-              licensePeriodTotals.licencasRenovar += report.sketchup_to_renew || 0;
-            }
-            if (product === "CHAOS" || product === "TODOS") {
-              licensePeriodTotals.licencasRenovar += report.chaos_to_renew || 0;
-            }
-          });
-          
+        const isGestorAllTeam = isGestor && selectedSeller === "TODOS";
+        licensePeriodTotals.licencasRenovar = calculateLicensesToRenew(licenseReports, isGestorAllTeam);
+        
+        if (isGestorAllTeam) {
           // Sum ALL "renovado" from valid reports of all team members using findLastValidRenovadoReport
           if (licenseReports && licenseReports.length > 0) {
             // Group reports by user_id
@@ -315,19 +343,6 @@ const Dashboard = () => {
           }
           
         } else {
-          // For individual user or specific seller selected
-          const mostRecentReport = licenseReports
-            ?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-          
-          if (mostRecentReport) {
-            if (product === "TRIMBLE" || product === "TODOS") {
-              licensePeriodTotals.licencasRenovar += mostRecentReport.sketchup_to_renew || 0;
-            }
-            if (product === "CHAOS" || product === "TODOS") {
-              licensePeriodTotals.licencasRenovar += mostRecentReport.chaos_to_renew || 0;
-            }
-          }
-
           // Use accumulated total from latest valid report
           if (licenseReports && licenseReports.length > 0) {
             const latestValidReport = findLastValidRenovadoReport(licenseReports);
@@ -345,23 +360,13 @@ const Dashboard = () => {
 
       } else if (period === "MENSAL" || period === "PERSONALIZADO") {
         console.log("DEBUG - Monthly/Custom period logic for licenses, isGestor:", isGestor, "selectedSeller:", selectedSeller);
+        const isGestorAllTeam = isGestor && selectedSeller === "TODOS";
         
-        if (isGestor && selectedSeller === "TODOS") {
+        // Use the same logic as HOJE/SEMANAL - get most recent report per user
+        licensePeriodTotals.licencasRenovar = calculateLicensesToRenew(licenseReports, isGestorAllTeam);
+        
+        if (isGestorAllTeam) {
           console.log("DEBUG - Monthly/Custom aggregation for all sellers, licenseReports length:", licenseReports?.length);
-          
-          // For gestor viewing team data: SUM ALL "licencas a renovar" from all reports of all users
-          let totalLicencasRenovar = 0;
-          licenseReports?.forEach(report => {
-            if (product === "TRIMBLE" || product === "TODOS") {
-              totalLicencasRenovar += report.sketchup_to_renew || 0;
-            }
-            if (product === "CHAOS" || product === "TODOS") {
-              totalLicencasRenovar += report.chaos_to_renew || 0;
-            }
-          });
-          licensePeriodTotals.licencasRenovar += totalLicencasRenovar;
-          
-          console.log("DEBUG - Monthly/Custom licencasRenovar total:", totalLicencasRenovar);
           
           // Sum ALL "renovado" from valid reports of all team members using findLastValidRenovadoReport
           if (licenseReports && licenseReports.length > 0) {
@@ -393,21 +398,8 @@ const Dashboard = () => {
           }
           
         } else {
-          // For individual user or specific seller selected: SUM ALL reports
+          // For individual user or specific seller selected: use accumulated total from latest valid report
           if (licenseReports && licenseReports.length > 0) {
-            // Sum ALL "licencas a renovar" from all reports in the period
-            let totalLicencasRenovar = 0;
-            licenseReports.forEach(report => {
-              if (product === "TRIMBLE" || product === "TODOS") {
-                totalLicencasRenovar += report.sketchup_to_renew || 0;
-              }
-              if (product === "CHAOS" || product === "TODOS") {
-                totalLicencasRenovar += report.chaos_to_renew || 0;
-              }
-            });
-            licensePeriodTotals.licencasRenovar += totalLicencasRenovar;
-            
-            // Use accumulated total from latest valid report  
             const latestValidReport = findLastValidRenovadoReport(licenseReports);
             
             if (latestValidReport) {
