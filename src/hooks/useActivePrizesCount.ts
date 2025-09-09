@@ -16,7 +16,7 @@ export function useActivePrizesCount() {
       try {
         let query = supabase
           .from('prizes')
-          .select('id, is_for_all, target_users')
+          .select('id, is_for_all, target_users, deadline')
           .eq('is_active', true);
 
         const { data, error } = await query;
@@ -31,14 +31,24 @@ export function useActivePrizesCount() {
           return;
         }
 
-        // Se for gestor, mostra todos os prêmios ativos
+        // Filter out expired prizes
+        const activePrizes = data.filter(prize => {
+          if (!prize.deadline) return true; // No deadline means never expires
+          const deadline = new Date(prize.deadline);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); // Start of today
+          deadline.setHours(0, 0, 0, 0); // Start of deadline day
+          return deadline >= today; // Include if deadline is today or future
+        });
+
+        // Se for gestor, mostra todos os prêmios ativos e não expirados
         if (profile.role === 'gestor') {
-          setCount(data.length);
+          setCount(activePrizes.length);
           return;
         }
 
-        // Se for vendedor, mostra apenas os prêmios destinados a ele
-        const relevantPrizes = data.filter(prize => {
+        // Se for vendedor, mostra apenas os prêmios destinados a ele e não expirados
+        const relevantPrizes = activePrizes.filter(prize => {
           return prize.is_for_all || (prize.target_users && prize.target_users.includes(profile.user_id));
         });
 
