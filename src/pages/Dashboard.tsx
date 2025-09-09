@@ -627,16 +627,21 @@ const Dashboard = () => {
       const last5BusinessDays = [];
       const today = new Date();
       let currentDate = new Date(today);
-      let daysAdded = 0;
-
+      
+      // Start from today and go backwards to include today if it's a business day
       const businessDates = [];
-      while (daysAdded < 5) {
+      let daysChecked = 0;
+      let businessDaysFound = 0;
+      
+      while (businessDaysFound < 5 && daysChecked < 10) { // Safety limit
+        const dayOfWeek = currentDate.getDay();
         // Skip weekends (0 = Sunday, 6 = Saturday)
-        if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
           businessDates.push(currentDate.toISOString().split('T')[0]);
-          daysAdded++;
+          businessDaysFound++;
         }
         currentDate.setDate(currentDate.getDate() - 1);
+        daysChecked++;
       }
 
       // Query for the last 5 business days
