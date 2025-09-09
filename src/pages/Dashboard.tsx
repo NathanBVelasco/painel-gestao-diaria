@@ -671,7 +671,9 @@ const Dashboard = () => {
         const dayForecast = dayReports.reduce((sum, r) => sum + (r.forecast_amount || 0), 0);
         const dayVendas = dayReports.reduce((sum, r) => sum + (r.sales_amount || 0), 0);
 
-        const date = new Date(dateStr);
+        // Parse date correctly to avoid timezone issues
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const date = new Date(year, month - 1, day); // month is 0-indexed
         last5BusinessDays.push({
           day: date.toLocaleDateString('pt-BR', { weekday: 'short' }),
           forecast: dayForecast,
