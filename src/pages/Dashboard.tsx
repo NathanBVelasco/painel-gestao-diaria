@@ -393,52 +393,29 @@ const Dashboard = () => {
           console.log("DEBUG - Monthly/Custom: Final licencasRenovar total:", totalLicencasRenovar);
         }
         
-        if (isGestorAllTeam) {
-          console.log("DEBUG - Monthly/Custom aggregation for all sellers, licenseReports length:", licenseReports?.length);
+        // For Monthly/Custom: sum ALL "renovado" from ALL reports in the period (same logic as licenças a renovar)
+        if (licenseReports && licenseReports.length > 0) {
+          console.log("DEBUG - Monthly/Custom: Processing", licenseReports.length, "reports for renovado");
           
-          // Sum ALL "renovado" from valid reports of all team members using findLastValidRenovadoReport
-          if (licenseReports && licenseReports.length > 0) {
-            // Group reports by user_id
-            const userReportsMap = new Map();
-            licenseReports.forEach(report => {
-              if (!userReportsMap.has(report.user_id)) {
-                userReportsMap.set(report.user_id, []);
-              }
-              userReportsMap.get(report.user_id).push(report);
-            });
-            
-            let totalRenovado = 0;
-            // For each user, find their last valid renovado report and sum
-            userReportsMap.forEach(userReports => {
-              const latestValidReport = findLastValidRenovadoReport(userReports);
-              if (latestValidReport) {
-                if (product === "TRIMBLE" || product === "TODOS") {
-                  totalRenovado += latestValidReport.sketchup_renewed || 0;
-                }
-                if (product === "CHAOS" || product === "TODOS") {
-                  totalRenovado += latestValidReport.chaos_renewed || 0;
-                }
-              }
-            });
-            licensePeriodTotals.renovadoQty += totalRenovado;
-            
-            console.log("DEBUG - Monthly/Custom renovadoQty total:", totalRenovado);
-          }
-          
-        } else {
-          // For individual user or specific seller selected: use accumulated total from latest valid report
-          if (licenseReports && licenseReports.length > 0) {
-            const latestValidReport = findLastValidRenovadoReport(licenseReports);
-            
-            if (latestValidReport) {
-              if (product === "TRIMBLE" || product === "TODOS") {
-                licensePeriodTotals.renovadoQty += latestValidReport.sketchup_renewed || 0;
-              }
-              if (product === "CHAOS" || product === "TODOS") {
-                licensePeriodTotals.renovadoQty += latestValidReport.chaos_renewed || 0;
-              }
+          let totalRenovado = 0;
+          licenseReports.forEach(report => {
+            let reportTotal = 0;
+            if (product === "TRIMBLE" || product === "TODOS") {
+              const sketchupRenewed = report.sketchup_renewed || 0;
+              reportTotal += sketchupRenewed;
+              console.log("DEBUG - Report", report.user_id, "sketchup_renewed:", sketchupRenewed);
             }
-          }
+            if (product === "CHAOS" || product === "TODOS") {
+              const chaosRenewed = report.chaos_renewed || 0;
+              reportTotal += chaosRenewed;
+              console.log("DEBUG - Report", report.user_id, "chaos_renewed:", chaosRenewed);
+            }
+            totalRenovado += reportTotal;
+            console.log("DEBUG - Report", report.user_id, "total renewed:", reportTotal);
+          });
+          
+          licensePeriodTotals.renovadoQty = totalRenovado;
+          console.log("DEBUG - Monthly/Custom: Final renovado total:", totalRenovado);
         }
       }
 
