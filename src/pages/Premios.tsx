@@ -29,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { usePrizeNotifications } from "@/hooks/usePrizeNotifications";
 
 interface Prize {
   id: string;
@@ -60,6 +61,9 @@ interface Profile {
 
 const Premios = () => {
   const { profile, isGestor } = useAuth();
+  
+  // Enable real-time prize notifications
+  usePrizeNotifications();
   const [prizes, setPrizes] = useState<Prize[]>([]);
   const [allUsersProgress, setAllUsersProgress] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -101,6 +105,52 @@ const Premios = () => {
         loadAllUsersProgress();
       }
     }
+
+    // Set up real-time subscriptions for prizes and achievements changes
+    const prizesChannel = supabase
+      .channel('prizes-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'prizes'
+        },
+        () => {
+          if (profile) {
+            loadPrizes();
+            if (isGestor) {
+              loadAllUsersProgress();
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    const achievementsChannel = supabase
+      .channel('achievements-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'prize_achievements'
+        },
+        () => {
+          if (profile) {
+            loadPrizes();
+            if (isGestor) {
+              loadAllUsersProgress();
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(prizesChannel);
+      supabase.removeChannel(achievementsChannel);
+    };
   }, [profile, isGestor]);
 
   const loadPrizes = async () => {
