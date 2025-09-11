@@ -30,6 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { usePrizeNotifications } from "@/hooks/usePrizeNotifications";
+import { UserAchievements } from "@/components/UserAchievements";
 
 interface Prize {
   id: string;
@@ -1060,6 +1061,11 @@ const Premios = () => {
           </Dialog>
         )}
       </div>
+
+      {/* User Achievements Section - Only show for non-gestors */}
+      {!isGestor && (
+        <UserAchievements />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Active Prizes */}
