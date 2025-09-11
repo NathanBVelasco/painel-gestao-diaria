@@ -51,6 +51,11 @@ interface Prize {
     achieved_at: string;
     progress: number;
   };
+  prize_achievements?: Array<{
+    achieved_at: string;
+    progress: number;
+    user_id: string;
+  }>;
 }
 
 interface Profile {
@@ -169,7 +174,6 @@ const Premios = () => {
             user_id
           )
         `)
-        .eq("is_active", true)
         .order("created_at", { ascending: false });
 
       const { data: prizesData, error } = await query;
@@ -601,8 +605,8 @@ const Premios = () => {
     return new Date(deadline) < new Date();
   };
 
-  const activePrizes = prizes.filter(p => !isExpired(p.deadline));
-  const expiredPrizes = prizes.filter(p => isExpired(p.deadline));
+  const activePrizes = prizes.filter(p => p.is_active && !isExpired(p.deadline));
+  const expiredPrizes = prizes.filter(p => !p.is_active || isExpired(p.deadline));
 
   if (loading) {
     return (
@@ -1260,32 +1264,60 @@ const Premios = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {expiredPrizes.map((prize) => (
-                  <div
-                    key={prize.id}
-                    className="p-4 rounded-lg border bg-muted/30 opacity-75"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-semibold text-muted-foreground">
-                        {prize.title}
-                      </h3>
-                      <Badge variant="outline" className="text-muted-foreground">
-                        Expirado
-                      </Badge>
-                    </div>
+                {expiredPrizes.map((prize) => {
+                  const wasConquered = !prize.is_active && !isExpired(prize.deadline);
+                  const winner = prize.prize_achievements?.find((ach: any) => ach.progress >= 100);
+                  
+                  return (
+                    <div
+                      key={prize.id}
+                      className="p-4 rounded-lg border bg-muted/30 opacity-75"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-semibold text-muted-foreground">
+                          {prize.title}
+                        </h3>
+                        {wasConquered ? (
+                          <Badge variant="outline" className="text-success border-success">
+                            🏆 Conquistado
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            ⏰ Expirado
+                          </Badge>
+                        )}
+                      </div>
 
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {prize.description}
-                    </p>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {prize.description}
+                      </p>
 
-                    <div className="text-xs text-muted-foreground">
-                      <div className="flex justify-between">
-                        <span>Prêmio: {prize.value_or_bonus}</span>
-                        <span>Expirou em: {new Date(prize.deadline).toLocaleDateString('pt-BR')}</span>
+                      {prize.criteria_type && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                          {getCriteriaIcon(prize.criteria_type)}
+                          <span>
+                            Meta: {prize.criteria_target} ({getCriteriaPeriodLabel(prize.criteria_period || 'week')})
+                          </span>
+                        </div>
+                      )}
+
+                      {wasConquered && winner && (
+                        <div className="text-xs text-success mb-2 p-2 bg-success/10 rounded border border-success/20">
+                          🎉 Conquistado com {Math.round(winner.progress)}% de progresso
+                        </div>
+                      )}
+
+                      <div className="text-xs text-muted-foreground">
+                        <div className="flex justify-between">
+                          <span>Prêmio: {prize.value_or_bonus}</span>
+                          <span>
+                            {wasConquered ? 'Finalizado' : 'Expirou em'}: {new Date(prize.deadline).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
