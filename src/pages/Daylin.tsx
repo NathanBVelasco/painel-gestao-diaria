@@ -133,7 +133,8 @@ const Daylin = () => {
   const {
     formData: startForm,
     updateField: updateStartField,
-    clearPersistedData: clearStartForm
+    clearPersistedData: clearStartForm,
+    isLoading: startFormLoading
   } = useFormPersist({
     key: 'daylin-start-form',
     initialState: {
@@ -150,7 +151,8 @@ const Daylin = () => {
     formData: endForm,
     updateField: updateEndField,
     setFormData: setEndForm,
-    clearPersistedData: clearEndForm
+    clearPersistedData: clearEndForm,
+    isLoading: endFormLoading
   } = useFormPersist({
     key: 'daylin-end-form',
     initialState: {
@@ -165,17 +167,17 @@ const Daylin = () => {
     }
   });
 
-  useEffect(() => {
-    if (isGestor) {
-      setLoading(false); // Set loading false for gestor immediately
-      loadSellersStatus(selectedDate);
-      loadSellersWithTargets();
-    } else {
-      loadTodayReport();
-      loadWeeklyRenewalData();
-      checkEndDayAlert();
-    }
-  }, [profile, isGestor, selectedDate]);
+  // Validation helpers
+  const isStartFormValid = () => {
+    return startForm.mood?.trim() && 
+           startForm.forecast_amount?.trim() && 
+           startForm.daily_strategy?.trim();
+  };
+
+  const isEndFormValid = () => {
+    return endForm.sales_amount?.trim() && 
+           endForm.difficulties?.trim();
+  };
 
   const loadTodayReport = async () => {
     if (!profile) return;
@@ -659,7 +661,7 @@ const Daylin = () => {
     }
   };
 
-  if (loading || gestorLoading) {
+  if (loading || gestorLoading || (!isGestor && (startFormLoading || endFormLoading))) {
     return (
       <div className="space-y-6">
         <div className="animate-pulse space-y-4">
@@ -1472,13 +1474,14 @@ const Daylin = () => {
             ) : (
               <form onSubmit={handleStartDay} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="mood">Sentimento do dia</Label>
+                  <Label htmlFor="mood">Sentimento do dia <span className="text-destructive">*</span></Label>
                   <Textarea
                     id="mood"
                     value={startForm.mood}
                     onChange={(e) => updateStartField('mood', e.target.value)}
                     placeholder="Como você está se sentindo hoje? Descreva seu humor..."
                     rows={2}
+                    required
                   />
                 </div>
 
@@ -1528,34 +1531,41 @@ const Daylin = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="forecast_amount">Forecast (R$)</Label>
+                  <Label htmlFor="forecast_amount">Forecast (R$) <span className="text-destructive">*</span></Label>
                   <Input
                     id="forecast_amount"
                     type="text"
                     value={startForm.forecast_amount}
                     onChange={(e) => updateStartField('forecast_amount', e.target.value)}
                     placeholder="0,00 ou 0.00"
+                    required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="daily_strategy">Estratégia do dia</Label>
+                  <Label htmlFor="daily_strategy">Estratégia do dia <span className="text-destructive">*</span></Label>
                   <Textarea
                     id="daily_strategy"
                     value={startForm.daily_strategy}
                     onChange={(e) => updateStartField('daily_strategy', e.target.value)}
                     placeholder="Descreva sua estratégia para hoje..."
                     rows={3}
+                    required
                   />
                 </div>
 
                 <Button 
                   type="submit" 
                   className="w-full brand-gradient"
-                  disabled={submitting || !startForm.mood}
+                  disabled={submitting || !isStartFormValid()}
                 >
                   {submitting ? "Iniciando..." : "🚀 Iniciar o Dia"}
                 </Button>
+                {!isStartFormValid() && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    * Preencha todos os campos obrigatórios para continuar
+                  </p>
+                )}
               </form>
             )}
           </CardContent>
@@ -1645,13 +1655,14 @@ const Daylin = () => {
             ) : (
               <form onSubmit={handleEndDay} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="difficulties">Dificuldades do dia</Label>
+                  <Label htmlFor="difficulties">Dificuldades do dia <span className="text-destructive">*</span></Label>
                   <Textarea
                     id="difficulties"
                     value={endForm.difficulties}
                     onChange={(e) => updateEndField('difficulties', e.target.value)}
                     placeholder="Descreva as principais dificuldades..."
                     rows={3}
+                    required
                   />
                 </div>
 
@@ -1681,13 +1692,14 @@ const Daylin = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="sales_amount">Vendas hoje (R$)</Label>
+                  <Label htmlFor="sales_amount">Vendas hoje (R$) <span className="text-destructive">*</span></Label>
                   <Input
                     id="sales_amount"
                     type="text"
                     value={endForm.sales_amount}
                     onChange={(e) => updateEndField('sales_amount', e.target.value)}
                     placeholder="0,00 ou 0.00"
+                    required
                   />
                 </div>
 
@@ -1742,10 +1754,20 @@ const Daylin = () => {
                 <Button 
                   type="submit" 
                   className="w-full bg-blue-600 hover:bg-blue-700"
-                  disabled={submitting}
+                  disabled={submitting || !isEndFormValid()}
                 >
                   {submitting ? "Encerrando..." : "🌙 Encerrar o Dia"}
                 </Button>
+                {!isEndFormValid() && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    * Preencha todos os campos obrigatórios para continuar
+                  </p>
+                )}
+                {!isEndFormValid() && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    * Preencha todos os campos obrigatórios para continuar
+                  </p>
+                )}
               </form>
             )}
           </CardContent>

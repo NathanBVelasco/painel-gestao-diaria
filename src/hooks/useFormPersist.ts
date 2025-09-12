@@ -11,20 +11,26 @@ export function useFormPersist<T extends Record<string, any>>({
   initialState,
   onReset
 }: FormPersistOptions<T>) {
+  const [isLoading, setIsLoading] = useState(true);
+  
   // Load initial state from localStorage or use provided initial state
-  const [formData, setFormData] = useState<T>(() => {
+  const [formData, setFormData] = useState<T>(initialState);
+
+  // Load persisted data on mount
+  useEffect(() => {
     try {
       const savedData = localStorage.getItem(key);
       if (savedData) {
         const parsed = JSON.parse(savedData);
         // Merge saved data with initial state to handle new fields
-        return { ...initialState, ...parsed };
+        setFormData({ ...initialState, ...parsed });
       }
     } catch (error) {
       console.error('Error loading persisted form data:', error);
+    } finally {
+      setIsLoading(false);
     }
-    return initialState;
-  });
+  }, [key]);
 
   // Save to localStorage whenever formData changes
   useEffect(() => {
@@ -79,6 +85,7 @@ export function useFormPersist<T extends Record<string, any>>({
     setFormData,
     updateField,
     updateFields,
-    clearPersistedData
+    clearPersistedData,
+    isLoading
   };
 }
