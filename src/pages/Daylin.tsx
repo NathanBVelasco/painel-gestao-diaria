@@ -226,6 +226,18 @@ const Daylin = () => {
     }
   };
 
+  // Load initial data when component mounts or profile changes
+  useEffect(() => {
+    if (profile) {
+      if (isGestor) {
+        loadSellersStatus();
+        loadSellersWithTargets();
+      } else {
+        loadTodayReport();
+      }
+    }
+  }, [profile, isGestor]);
+
   const loadSellersStatus = async (date?: Date) => {
     if (!profile || !isGestor) return;
 
