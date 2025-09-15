@@ -164,83 +164,96 @@ const Premios = () => {
 
     setLoading(true);
     try {
-      let query = supabase
-        .from("prizes")
-        .select(`
-          *,
-          prize_achievements!left (
-            achieved_at,
-            progress,
-            user_id
-          )
-        `)
-        .order("created_at", { ascending: false });
+      let prizesData: any[] | null = null;
+      let creatorMap = new Map<string, string>();
 
-      const { data: prizesData, error } = await query;
+      if (isGestor) {
+        // Gestor: consulta direta com joins
+        const { data: pd, error } = await supabase
+          .from("prizes")
+          .select(`
+            *,
+            prize_achievements!left (
+              achieved_at,
+              progress,
+              user_id
+            )
+          `)
+          .order("created_at", { ascending: false });
 
-      if (error) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar os prêmios",
-          variant: "destructive",
-        });
-        return;
+        if (error) {
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os prêmios",
+            variant: "destructive",
+          });
+          return;
+        }
+        prizesData = pd;
+
+        // Carrega nomes de criadores (permitido para gestor via função segura existente)
+        const creatorIds = [...new Set(prizesData?.map(p => p.created_by) || [])];
+        if (creatorIds.length > 0) {
+          const { data: creators } = await supabase
+            .from("profiles")
+            .select("user_id, name")
+            .in("user_id", creatorIds);
+
+          creatorMap = new Map(creators?.map(c => [c.user_id, c.name]) || []);
+        }
+      } else {
+        // Vendedor: usa Edge Function para incluir prêmios encerrados conquistados
+        const { data: fnData, error: fnErr } = await supabase.functions.invoke("get-user-prizes");
+        if (fnErr) {
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar seus prêmios",
+            variant: "destructive",
+          });
+          return;
+        }
+        prizesData = fnData?.prizes || [];
       }
 
-      // Get creator names
-      const creatorIds = [...new Set(prizesData?.map(p => p.created_by) || [])];
-      if (creatorIds.length > 0) {
-        const { data: creators } = await supabase
-          .from("profiles")
-          .select("user_id, name")
-          .in("user_id", creatorIds);
+      // Calcula progresso e estrutura final
+      const processedPrizes = await Promise.all(
+        (prizesData || []).map(async (prize: any) => {
+          const userAchievement = prize.prize_achievements?.find(
+            (ach: any) => ach.user_id === profile.user_id
+          );
 
-        const creatorMap = new Map(creators?.map(c => [c.user_id, c.name]) || []);
+          let calculatedProgress = userAchievement?.progress || 0;
 
-        // Calculate progress for prizes with criteria
-        const processedPrizes = await Promise.all(
-          (prizesData || []).map(async (prize) => {
-            // Filter achievements for current user
-            const userAchievement = prize.prize_achievements?.find(
-              (ach: any) => ach.user_id === profile.user_id
+          if (prize.criteria_type && prize.criteria_target) {
+            calculatedProgress = await calculatePrizeProgress(
+              prize.criteria_type,
+              prize.criteria_target,
+              prize.criteria_period || 'week',
+              prize.created_at,
+              prize.deadline,
+              profile.user_id
             );
+          }
 
-            let calculatedProgress = userAchievement?.progress || 0;
+          return {
+            ...prize,
+            creator_name: creatorMap.get(prize.created_by),
+            achievement: (userAchievement || (calculatedProgress > 0)) ? {
+              achieved_at: calculatedProgress >= 100 ? new Date().toISOString() : "",
+              progress: calculatedProgress,
+            } : undefined,
+          };
+        })
+      );
 
-            // Calculate progress from daily reports if criteria is set
-            if (prize.criteria_type && prize.criteria_target) {
-              calculatedProgress = await calculatePrizeProgress(
-                prize.criteria_type,
-                prize.criteria_target,
-                prize.criteria_period || 'week',
-                prize.created_at,
-                prize.deadline,
-                profile.user_id
-              );
-            }
+      // Filtra por permissão no cliente (redundante para gestor)
+      const filteredPrizes = processedPrizes.filter(prize => {
+        if (isGestor) return true;
+        if (prize.is_for_all) return true;
+        return prize.target_users?.includes(profile.user_id);
+      });
 
-            return {
-              ...prize,
-              creator_name: creatorMap.get(prize.created_by),
-              achievement: userAchievement || (calculatedProgress > 0) ? {
-                achieved_at: calculatedProgress >= 100 ? new Date().toISOString() : "",
-                progress: calculatedProgress,
-              } : undefined,
-              // Keep prize_achievements data for winner identification
-            };
-          })
-        );
-
-        // Filter prizes based on user permissions
-        const filteredPrizes = processedPrizes.filter(prize => {
-          if (isGestor) return true; // Gestors see all prizes
-          if (prize.is_for_all) return true;
-          return prize.target_users?.includes(profile.user_id);
-        });
-
-        setPrizes(filteredPrizes);
-      }
-
+      setPrizes(filteredPrizes);
     } catch (error) {
       console.error("Error loading prizes:", error);
       toast({
@@ -251,6 +264,7 @@ const Premios = () => {
     } finally {
       setLoading(false);
     }
+
   };
 
   const calculatePrizeProgress = async (
