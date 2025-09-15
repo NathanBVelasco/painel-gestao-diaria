@@ -106,8 +106,8 @@ const Premios = () => {
   useEffect(() => {
     if (profile) {
       loadPrizes();
-      loadProfiles(); // Load profiles for all users to show prize winners
       if (isGestor) {
+        loadProfiles(); // Only load profiles for gestors
         loadAllUsersProgress();
       }
     }
@@ -1267,7 +1267,6 @@ const Premios = () => {
                 {expiredPrizes.map((prize) => {
                   const wasConquered = !prize.is_active && !isExpired(prize.deadline);
                   const winner = prize.prize_achievements?.find((ach: any) => ach.progress >= 100);
-                  const winnerProfile = winner ? profiles.find(p => p.user_id === winner.user_id) : null;
                   
                   return (
                     <div
@@ -1304,7 +1303,7 @@ const Premios = () => {
 
                       {wasConquered && winner && (
                         <div className="text-xs text-success mb-2 p-2 bg-success/10 rounded border border-success/20">
-                          🎉 Conquistado por {winnerProfile?.name || 'Vendedor'} com {Math.round(winner.progress)}% de progresso
+                          🎉 Conquistado com {Math.round(winner.progress)}% de progresso
                         </div>
                       )}
 
