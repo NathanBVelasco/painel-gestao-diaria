@@ -43,10 +43,18 @@ serve(async (req) => {
 
     const userId = userRes.user.id;
 
-    // 1) Closed prizes the user won (inner join on prize_achievements)
+    // 1) Closed prizes the user won with winner info
     const { data: closedWon, error: closedErr } = await supabaseService
       .from("prizes")
-      .select(`*, prize_achievements!inner ( achieved_at, progress, user_id )`)
+      .select(`
+        *,
+        prize_achievements!inner (
+          achieved_at,
+          progress,
+          user_id,
+          profiles(name)
+        )
+      `)
       .eq("is_active", false)
       .eq("prize_achievements.user_id", userId)
       .order("created_at", { ascending: false });

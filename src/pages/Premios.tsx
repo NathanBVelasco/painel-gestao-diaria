@@ -31,6 +31,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { usePrizeNotifications } from "@/hooks/usePrizeNotifications";
 import { UserAchievements } from "@/components/UserAchievements";
+import { AchievementsHistory } from "@/components/AchievementsHistory";
 
 interface Prize {
   id: string;
@@ -55,6 +56,9 @@ interface Prize {
     achieved_at: string;
     progress: number;
     user_id: string;
+    profiles?: {
+      name: string;
+    };
   }>;
 }
 
@@ -176,7 +180,8 @@ const Premios = () => {
             prize_achievements!left (
               achieved_at,
               progress,
-              user_id
+              user_id,
+              profiles(name)
             )
           `)
           .order("created_at", { ascending: false });
@@ -1291,11 +1296,11 @@ const Premios = () => {
                         <h3 className="font-semibold text-muted-foreground">
                           {prize.title}
                         </h3>
-                        {wasConquered ? (
-                          <Badge variant="outline" className="text-success border-success">
-                            🏆 Conquistado
-                          </Badge>
-                        ) : (
+                         {wasConquered ? (
+                           <Badge variant="outline" className="text-success border-success">
+                             🏆 Conquistado{winner?.profiles?.name ? ` por ${winner.profiles.name}` : ''}
+                           </Badge>
+                         ) : (
                           <Badge variant="outline" className="text-muted-foreground">
                             ⏰ Expirado
                           </Badge>
@@ -1338,25 +1343,8 @@ const Premios = () => {
         </Card>
       </div>
 
-      {/* History Section */}
-      <Card className="card-shadow">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-accent" />
-            Histórico de Conquistas
-          </CardTitle>
-          <CardDescription>
-            {isGestor ? "Histórico geral da equipe" : "Seus prêmios conquistados"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <Trophy className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>Funcionalidade em desenvolvimento</p>
-            <p className="text-xs">Em breve você poderá ver o histórico completo</p>
-          </div>
-        </CardContent>
-      </Card>
+       {/* Achievements History */}
+       <AchievementsHistory />
     </div>
   );
 };

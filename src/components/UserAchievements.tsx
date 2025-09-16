@@ -32,54 +32,28 @@ export function UserAchievements() {
 
     const fetchAchievements = async () => {
       try {
-        const { data, error } = await supabase
-          .from('prize_achievements')
-          .select(`
-            id,
-            progress,
-            achieved_at,
-            prizes!inner (
-              title
-            )
-          `)
-          .eq('user_id', profile.user_id)
-          .order('achieved_at', { ascending: false });
-
-        if (error) {
-          console.error('Error fetching achievements:', error);
+        console.log('Fetching achievements for user:', profile?.user_id);
+        
+        // Use edge function for better RLS handling
+        const { data: fnData, error: fnErr } = await supabase.functions.invoke('get-user-prizes');
+        
+        if (fnErr || !fnData) {
+          console.error('Edge function error:', fnErr);
+          setLoading(false);
+          return;
         }
 
-        let formattedAchievements = data?.map((achievement: any) => ({
-          id: achievement.id,
-          prize_title: achievement.prizes.title,
-          progress: achievement.progress,
-          achieved_at: achievement.achieved_at
-        })) || [];
-
-        // Fallback: se RLS bloquear o join com prizes, busca via Edge Function
-        if (formattedAchievements.length === 0) {
-          try {
-            const { data: fnData, error: fnErr } = await supabase.functions.invoke('get-user-prizes');
-            if (!fnErr) {
-              const prizes = fnData?.prizes || [];
-              const my = prizes
-                .map((p: any) => {
-                  const ach = (p.prize_achievements || []).find((a: any) => a.user_id === profile.user_id && a.achieved_at);
-                  if (!ach) return null;
-                  return {
-                    id: p.id,
-                    prize_title: p.title,
-                    progress: ach.progress,
-                    achieved_at: ach.achieved_at,
-                  } as Achievement;
-                })
-                .filter(Boolean) as Achievement[];
-              formattedAchievements = my;
-            }
-          } catch (e) {
-            console.error('Fallback get-user-prizes failed:', e);
-          }
-        }
+        const prizes = fnData?.prizes || [];
+        
+        // Filter only won prizes (inactive ones with achievements)
+        const formattedAchievements = prizes
+          .filter((p: any) => !p.is_active && p.prize_achievements?.[0]?.achieved_at)
+          .map((p: any) => ({
+            id: p.id,
+            prize_title: p.title,
+            progress: p.prize_achievements[0].progress,
+            achieved_at: p.prize_achievements[0].achieved_at,
+          })) as Achievement[];
 
         setAchievements(formattedAchievements);
       } catch (error) {
