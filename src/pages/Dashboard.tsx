@@ -172,43 +172,107 @@ const Dashboard = () => {
     return validReport || sortedReports[0];
   };
 
-  // Helper function to calculate licenses to renew using most recent report per user logic
-  const calculateLicensesToRenew = (licenseReports: any[], isGestorAllTeam: boolean) => {
+  // Helper function to calculate licenses to renew - uses Monday report for weekly periods
+  const calculateLicensesToRenew = (licenseReports: any[], isGestorAllTeam: boolean, currentPeriod: Period) => {
     let licencasRenovar = 0;
     
     if (isGestorAllTeam) {
-      // For gestor viewing team data: get most recent report per user and sum
-      const userLatestReports = new Map();
-      licenseReports?.forEach(report => {
-        const currentLatest = userLatestReports.get(report.user_id);
-        if (!currentLatest || new Date(report.date) > new Date(currentLatest.date)) {
-          userLatestReports.set(report.user_id, report);
-        }
-      });
-      
-      console.log("DEBUG - Most recent reports per user:", userLatestReports.size);
-      
-      // Sum "licencas a renovar" from most recent report of each user
-      userLatestReports.forEach(report => {
-        const userLicenses = ((product === "TRIMBLE" || product === "TODOS") ? (report.sketchup_to_renew || 0) : 0) +
-                           ((product === "CHAOS" || product === "TODOS") ? (report.chaos_to_renew || 0) : 0);
-        licencasRenovar += userLicenses;
-        console.log(`DEBUG - User ${report.user_id}: ${userLicenses} licenses to renew`);
-      });
+      if (currentPeriod === "HOJE" || currentPeriod === "SEMANAL") {
+        // For gestor viewing team data in weekly periods: get Monday report per user and sum
+        const userMondayReports = new Map();
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        const mondayDate = new Date(today);
+        mondayDate.setDate(today.getDate() - daysToMonday);
+        const mondayDateStr = mondayDate.toISOString().split('T')[0];
+        
+        licenseReports?.forEach(report => {
+          if (report.date === mondayDateStr) {
+            userMondayReports.set(report.user_id, report);
+          }
+        });
+        
+        console.log("DEBUG - Monday reports per user:", userMondayReports.size, "for date:", mondayDateStr);
+        
+        // Sum "licencas a renovar" from Monday report of each user
+        userMondayReports.forEach(report => {
+          const userLicenses = ((product === "TRIMBLE" || product === "TODOS") ? (report.sketchup_to_renew || 0) : 0) +
+                             ((product === "CHAOS" || product === "TODOS") ? (report.chaos_to_renew || 0) : 0);
+          licencasRenovar += userLicenses;
+          console.log(`DEBUG - User ${report.user_id} Monday licenses: ${userLicenses}`);
+        });
+      } else {
+        // For monthly/custom periods: get most recent report per user and sum
+        const userLatestReports = new Map();
+        licenseReports?.forEach(report => {
+          const currentLatest = userLatestReports.get(report.user_id);
+          if (!currentLatest || new Date(report.date) > new Date(currentLatest.date)) {
+            userLatestReports.set(report.user_id, report);
+          }
+        });
+        
+        console.log("DEBUG - Most recent reports per user:", userLatestReports.size);
+        
+        // Sum "licencas a renovar" from most recent report of each user
+        userLatestReports.forEach(report => {
+          const userLicenses = ((product === "TRIMBLE" || product === "TODOS") ? (report.sketchup_to_renew || 0) : 0) +
+                             ((product === "CHAOS" || product === "TODOS") ? (report.chaos_to_renew || 0) : 0);
+          licencasRenovar += userLicenses;
+          console.log(`DEBUG - User ${report.user_id}: ${userLicenses} licenses to renew`);
+        });
+      }
       
     } else {
-      // For individual user or specific seller selected: get most recent report
-      const mostRecentReport = licenseReports
-        ?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-      
-      if (mostRecentReport) {
-        if (product === "TRIMBLE" || product === "TODOS") {
-          licencasRenovar += mostRecentReport.sketchup_to_renew || 0;
+      if (currentPeriod === "HOJE" || currentPeriod === "SEMANAL") {
+        // For individual user in weekly periods: get Monday report
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        const mondayDate = new Date(today);
+        mondayDate.setDate(today.getDate() - daysToMonday);
+        const mondayDateStr = mondayDate.toISOString().split('T')[0];
+        
+        const mondayReport = licenseReports?.find(report => report.date === mondayDateStr);
+        
+        if (mondayReport) {
+          if (product === "TRIMBLE" || product === "TODOS") {
+            licencasRenovar += mondayReport.sketchup_to_renew || 0;
+          }
+          if (product === "CHAOS" || product === "TODOS") {
+            licencasRenovar += mondayReport.chaos_to_renew || 0;
+          }
+          console.log(`DEBUG - Single user Monday licenses (${mondayDateStr}): ${licencasRenovar}`);
+        } else {
+          console.log(`DEBUG - No Monday report found for ${mondayDateStr}, using fallback`);
+          // Fallback to most recent report if Monday report not found
+          const mostRecentReport = licenseReports
+            ?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+          
+          if (mostRecentReport) {
+            if (product === "TRIMBLE" || product === "TODOS") {
+              licencasRenovar += mostRecentReport.sketchup_to_renew || 0;
+            }
+            if (product === "CHAOS" || product === "TODOS") {
+              licencasRenovar += mostRecentReport.chaos_to_renew || 0;
+            }
+            console.log(`DEBUG - Single user fallback licenses: ${licencasRenovar}`);
+          }
         }
-        if (product === "CHAOS" || product === "TODOS") {
-          licencasRenovar += mostRecentReport.chaos_to_renew || 0;
+      } else {
+        // For monthly/custom periods: get most recent report
+        const mostRecentReport = licenseReports
+          ?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+        
+        if (mostRecentReport) {
+          if (product === "TRIMBLE" || product === "TODOS") {
+            licencasRenovar += mostRecentReport.sketchup_to_renew || 0;
+          }
+          if (product === "CHAOS" || product === "TODOS") {
+            licencasRenovar += mostRecentReport.chaos_to_renew || 0;
+          }
+          console.log(`DEBUG - Single user licenses to renew: ${licencasRenovar}`);
         }
-        console.log(`DEBUG - Single user licenses to renew: ${licencasRenovar}`);
       }
     }
     
@@ -320,7 +384,7 @@ const Dashboard = () => {
 
       if (period === "HOJE" || period === "SEMANAL") {
         const isGestorAllTeam = isGestor && selectedSeller === "TODOS";
-        licensePeriodTotals.licencasRenovar = calculateLicensesToRenew(licenseReports, isGestorAllTeam);
+        licensePeriodTotals.licencasRenovar = calculateLicensesToRenew(licenseReports, isGestorAllTeam, period);
         
         if (isGestorAllTeam) {
           // Sum ALL "renovado" from valid reports of all team members using findLastValidRenovadoReport
