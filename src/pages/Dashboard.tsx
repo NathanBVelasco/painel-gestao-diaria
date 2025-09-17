@@ -67,6 +67,7 @@ const Dashboard = () => {
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [showDaylinAlert, setShowDaylinAlert] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [actualPeriodUsed, setActualPeriodUsed] = useState<{ period: string; startDate: string; endDate: string } | null>(null);
   
   // Monthly target states (only for individual sellers)
   const [monthlyTarget, setMonthlyTarget] = useState<{ target: number; progress: number; currentSales: number } | null>(null);
@@ -175,6 +176,7 @@ const Dashboard = () => {
   // Helper function to calculate licenses to renew - uses Monday report for weekly periods
   const calculateLicensesToRenew = (licenseReports: any[], isGestorAllTeam: boolean, currentPeriod: Period) => {
     let licencasRenovar = 0;
+    let actualWeekUsed = null;
     
     if (isGestorAllTeam) {
       if (currentPeriod === "HOJE" || currentPeriod === "SEMANAL") {
@@ -183,17 +185,38 @@ const Dashboard = () => {
         const today = new Date();
         const dayOfWeek = today.getDay();
         const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        const mondayDate = new Date(today);
-        mondayDate.setDate(today.getDate() - daysToMonday);
-        const mondayDateStr = mondayDate.toISOString().split('T')[0];
+        
+        // Try current week Monday first
+        const currentMondayDate = new Date(today);
+        currentMondayDate.setDate(today.getDate() - daysToMonday);
+        const currentMondayDateStr = currentMondayDate.toISOString().split('T')[0];
         
         licenseReports?.forEach(report => {
-          if (report.date === mondayDateStr) {
+          if (report.date === currentMondayDateStr) {
             userMondayReports.set(report.user_id, report);
           }
         });
         
-        console.log("DEBUG - Monday reports per user:", userMondayReports.size, "for date:", mondayDateStr);
+        // If no reports found for current week Monday, try previous week Monday
+        if (userMondayReports.size === 0) {
+          const previousMondayDate = new Date(currentMondayDate);
+          previousMondayDate.setDate(currentMondayDate.getDate() - 7);
+          const previousMondayDateStr = previousMondayDate.toISOString().split('T')[0];
+          
+          licenseReports?.forEach(report => {
+            if (report.date === previousMondayDateStr) {
+              userMondayReports.set(report.user_id, report);
+            }
+          });
+          
+          if (userMondayReports.size > 0) {
+            actualWeekUsed = previousMondayDateStr;
+          }
+        } else {
+          actualWeekUsed = currentMondayDateStr;
+        }
+        
+        console.log("DEBUG - Monday reports per user:", userMondayReports.size, "for date:", actualWeekUsed || "none found");
         
         // Sum "licencas a renovar" from Monday report of each user
         userMondayReports.forEach(report => {
@@ -229,11 +252,27 @@ const Dashboard = () => {
         const today = new Date();
         const dayOfWeek = today.getDay();
         const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        const mondayDate = new Date(today);
-        mondayDate.setDate(today.getDate() - daysToMonday);
-        const mondayDateStr = mondayDate.toISOString().split('T')[0];
         
-        const mondayReport = licenseReports?.find(report => report.date === mondayDateStr);
+        // Try current week Monday first
+        const currentMondayDate = new Date(today);
+        currentMondayDate.setDate(today.getDate() - daysToMonday);
+        const currentMondayDateStr = currentMondayDate.toISOString().split('T')[0];
+        
+        let mondayReport = licenseReports?.find(report => report.date === currentMondayDateStr);
+        
+        // If no report found for current Monday, try previous Monday
+        if (!mondayReport) {
+          const previousMondayDate = new Date(currentMondayDate);
+          previousMondayDate.setDate(currentMondayDate.getDate() - 7);
+          const previousMondayDateStr = previousMondayDate.toISOString().split('T')[0];
+          
+          mondayReport = licenseReports?.find(report => report.date === previousMondayDateStr);
+          if (mondayReport) {
+            actualWeekUsed = previousMondayDateStr;
+          }
+        } else {
+          actualWeekUsed = currentMondayDateStr;
+        }
         
         if (mondayReport) {
           if (product === "TRIMBLE" || product === "TODOS") {
@@ -242,10 +281,10 @@ const Dashboard = () => {
           if (product === "CHAOS" || product === "TODOS") {
             licencasRenovar += mondayReport.chaos_to_renew || 0;
           }
-          console.log(`DEBUG - Single user Monday licenses (${mondayDateStr}): ${licencasRenovar}`);
+          console.log(`DEBUG - Single user Monday licenses (${actualWeekUsed}): ${licencasRenovar}`);
         } else {
-          console.log(`DEBUG - No Monday report found for ${mondayDateStr}, using fallback`);
-          // Fallback to most recent report if Monday report not found
+          console.log(`DEBUG - No Monday report found for any week, using most recent report`);
+          // Final fallback to most recent report if no Monday reports found
           const mostRecentReport = licenseReports
             ?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
           
@@ -256,7 +295,8 @@ const Dashboard = () => {
             if (product === "CHAOS" || product === "TODOS") {
               licencasRenovar += mostRecentReport.chaos_to_renew || 0;
             }
-            console.log(`DEBUG - Single user fallback licenses: ${licencasRenovar}`);
+            actualWeekUsed = mostRecentReport.date;
+            console.log(`DEBUG - Single user fallback licenses (${actualWeekUsed}): ${licencasRenovar}`);
           }
         }
       } else {
@@ -274,6 +314,37 @@ const Dashboard = () => {
           console.log(`DEBUG - Single user licenses to renew: ${licencasRenovar}`);
         }
       }
+    }
+    
+    // Set the actual period information for the badge
+    if (actualWeekUsed && (currentPeriod === "HOJE" || currentPeriod === "SEMANAL")) {
+      const usedDate = new Date(actualWeekUsed);
+      const endDate = new Date(usedDate);
+      endDate.setDate(usedDate.getDate() + 6); // Sunday of that week
+      
+      setActualPeriodUsed({
+        period: currentPeriod === "HOJE" ? "Licenças da Semana Atual" : "Licenças da Semana",
+        startDate: usedDate.toLocaleDateString('pt-BR'),
+        endDate: endDate.toLocaleDateString('pt-BR')
+      });
+    } else if (currentPeriod === "MENSAL") {
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      
+      setActualPeriodUsed({
+        period: "Licenças do Mês",
+        startDate: firstDay.toLocaleDateString('pt-BR'),
+        endDate: lastDay.toLocaleDateString('pt-BR')
+      });
+    } else if (currentPeriod === "PERSONALIZADO") {
+      setActualPeriodUsed({
+        period: "Licenças do Período",
+        startDate: customStartDate?.toLocaleDateString('pt-BR') || '',
+        endDate: customEndDate?.toLocaleDateString('pt-BR') || ''
+      });
+    } else {
+      setActualPeriodUsed(null);
     }
     
     console.log(`DEBUG - Total licenses to renew calculated: ${licencasRenovar}`);
@@ -862,6 +933,15 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Period indicator badge */}
+      {actualPeriodUsed && (
+        <div className="flex justify-center">
+          <Badge variant="outline" className="px-3 py-1.5 text-sm bg-primary/5 border-primary/20 text-primary">
+            📅 {actualPeriodUsed.period}: {actualPeriodUsed.startDate} - {actualPeriodUsed.endDate}
+          </Badge>
+        </div>
+      )}
 
       {/* Daylin Alert - only for sellers, not gestors */}
       {showDaylinAlert && !isGestor && (
