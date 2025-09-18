@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -179,7 +179,7 @@ const Daylin = () => {
            endForm.difficulties?.trim();
   };
 
-  const loadTodayReport = async () => {
+  const loadTodayReport = useCallback(async () => {
     if (!profile) return;
 
     setLoading(true);
@@ -224,21 +224,9 @@ const Daylin = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [profile, setEndForm]);
 
-  // Load initial data when component mounts or profile changes
-  useEffect(() => {
-    if (profile) {
-      if (isGestor) {
-        loadSellersStatus();
-        loadSellersWithTargets();
-      } else {
-        loadTodayReport();
-      }
-    }
-  }, [profile, isGestor]);
-
-  const loadSellersStatus = async (date?: Date) => {
+  const loadSellersStatus = useCallback(async (date?: Date) => {
     if (!profile || !isGestor) return;
 
     setGestorLoading(true);
@@ -307,9 +295,9 @@ const Daylin = () => {
     } finally {
       setGestorLoading(false);
     }
-  };
+  }, [profile, isGestor]);
 
-  const loadSellersWithTargets = async () => {
+  const loadSellersWithTargets = useCallback(async () => {
     if (!profile || !isGestor) return;
 
     try {
@@ -373,7 +361,7 @@ const Daylin = () => {
     } catch (error) {
       console.error("Error loading sellers with targets:", error);
     }
-  };
+  }, [profile, isGestor]);
 
   const saveTarget = async (sellerId: string, amount: number) => {
     if (!profile || !isGestor) return;
@@ -672,6 +660,18 @@ const Daylin = () => {
       setSubmitting(false);
     }
   };
+
+  // Load initial data when component mounts or profile changes
+  useEffect(() => {
+    if (profile) {
+      if (isGestor) {
+        loadSellersStatus();
+        loadSellersWithTargets();
+      } else {
+        loadTodayReport();
+      }
+    }
+  }, [profile, isGestor, loadSellersStatus, loadSellersWithTargets, loadTodayReport]);
 
   if (loading || gestorLoading || (!isGestor && (startFormLoading || endFormLoading))) {
     return (
