@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -174,7 +174,7 @@ const Dashboard = () => {
   };
 
   // Helper function to calculate licenses to renew - uses Monday report for weekly periods
-  const calculateLicensesToRenew = (licenseReports: any[], isGestorAllTeam: boolean, currentPeriod: Period) => {
+  const calculateLicensesToRenew = useCallback((licenseReports: any[], isGestorAllTeam: boolean, currentPeriod: Period) => {
     let licencasRenovar = 0;
     let actualWeekUsed = null;
     
@@ -349,7 +349,7 @@ const Dashboard = () => {
     
     console.log(`DEBUG - Total licenses to renew calculated: ${licencasRenovar}`);
     return licencasRenovar;
-  };
+  }, [setActualPeriodUsed]);
 
   const loadDashboardData = async () => {
     if (!profile) return;
