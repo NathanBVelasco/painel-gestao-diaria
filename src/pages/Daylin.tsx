@@ -665,6 +665,7 @@ const Daylin = () => {
   useEffect(() => {
     if (profile) {
       if (isGestor) {
+        setLoading(false); // Gestor não usa o loading geral; usa gestorLoading
         loadSellersStatus();
         loadSellersWithTargets();
       } else {
