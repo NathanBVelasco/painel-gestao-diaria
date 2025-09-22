@@ -674,6 +674,13 @@ const Daylin = () => {
     }
   }, [profile, isGestor, loadSellersStatus, loadSellersWithTargets, loadTodayReport]);
 
+  // Update sellers status when selected date changes (for gestors)
+  useEffect(() => {
+    if (profile && isGestor) {
+      loadSellersStatus(selectedDate);
+    }
+  }, [selectedDate, profile, isGestor, loadSellersStatus]);
+
   if (loading || gestorLoading || (!isGestor && (startFormLoading || endFormLoading))) {
     return (
       <div className="space-y-6">
