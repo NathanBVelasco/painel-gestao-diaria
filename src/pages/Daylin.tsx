@@ -1076,103 +1076,99 @@ const Daylin = () => {
                                  />
                                </div>
 
-                               {seller.ended_at && (
-                                 <>
-                                   <div className="space-y-2">
-                                     <Label htmlFor="edit_difficulties">Dificuldades</Label>
-                                     <Textarea
-                                       id="edit_difficulties"
-                                       value={editReportForm.difficulties}
-                                       onChange={(e) => setEditReportForm({ ...editReportForm, difficulties: e.target.value })}
-                                       placeholder="Principais dificuldades..."
-                                       rows={2}
-                                     />
-                                   </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="edit_difficulties">Dificuldades</Label>
+                                  <Textarea
+                                    id="edit_difficulties"
+                                    value={editReportForm.difficulties}
+                                    onChange={(e) => setEditReportForm({ ...editReportForm, difficulties: e.target.value })}
+                                    placeholder="Principais dificuldades..."
+                                    rows={2}
+                                  />
+                                </div>
 
-                                   <div className="grid grid-cols-2 gap-4">
-                                     <div className="space-y-2">
-                                       <Label htmlFor="edit_sketchup_renewed">SketchUp Renovado</Label>
-                                       <Input
-                                         id="edit_sketchup_renewed"
-                                         type="number"
-                                         min="0"
-                                         value={editReportForm.sketchup_renewed}
-                                         onChange={(e) => setEditReportForm({ ...editReportForm, sketchup_renewed: e.target.value })}
-                                         placeholder="0"
-                                       />
-                                     </div>
-                                     <div className="space-y-2">
-                                       <Label htmlFor="edit_chaos_renewed">Chaos Renovado</Label>
-                                       <Input
-                                         id="edit_chaos_renewed"
-                                         type="number"
-                                         min="0"
-                                         value={editReportForm.chaos_renewed}
-                                         onChange={(e) => setEditReportForm({ ...editReportForm, chaos_renewed: e.target.value })}
-                                         placeholder="0"
-                                       />
-                                     </div>
-                                   </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit_sketchup_renewed">SketchUp Renovado</Label>
+                                    <Input
+                                      id="edit_sketchup_renewed"
+                                      type="number"
+                                      min="0"
+                                      value={editReportForm.sketchup_renewed}
+                                      onChange={(e) => setEditReportForm({ ...editReportForm, sketchup_renewed: e.target.value })}
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit_chaos_renewed">Chaos Renovado</Label>
+                                    <Input
+                                      id="edit_chaos_renewed"
+                                      type="number"
+                                      min="0"
+                                      value={editReportForm.chaos_renewed}
+                                      onChange={(e) => setEditReportForm({ ...editReportForm, chaos_renewed: e.target.value })}
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                </div>
 
-                                   <div className="space-y-2">
-                                     <Label htmlFor="edit_sales_amount">Vendas (R$)</Label>
-                                     <Input
-                                       id="edit_sales_amount"
-                                       type="text"
-                                       value={editReportForm.sales_amount}
-                                       onChange={(e) => setEditReportForm({ ...editReportForm, sales_amount: e.target.value })}
-                                       placeholder="0,00 ou 0.00"
-                                     />
-                                   </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="edit_sales_amount">Vendas (R$)</Label>
+                                  <Input
+                                    id="edit_sales_amount"
+                                    type="text"
+                                    value={editReportForm.sales_amount}
+                                    onChange={(e) => setEditReportForm({ ...editReportForm, sales_amount: e.target.value })}
+                                    placeholder="0,00 ou 0.00"
+                                  />
+                                </div>
 
-                                   <div className="grid grid-cols-3 gap-4">
-                                     <div className="space-y-2">
-                                       <Label htmlFor="edit_cross_selling">Cross Selling</Label>
-                                       <Input
-                                         id="edit_cross_selling"
-                                         type="number"
-                                         min="0"
-                                         value={editReportForm.cross_selling}
-                                         onChange={(e) => setEditReportForm({ ...editReportForm, cross_selling: e.target.value })}
-                                         placeholder="0"
-                                       />
-                                     </div>
-                                     <div className="space-y-2">
-                                       <Label htmlFor="edit_onboarding">Onboarding</Label>
-                                       <Input
-                                         id="edit_onboarding"
-                                         type="number"
-                                         min="0"
-                                         value={editReportForm.onboarding}
-                                         onChange={(e) => setEditReportForm({ ...editReportForm, onboarding: e.target.value })}
-                                         placeholder="0"
-                                       />
-                                     </div>
-                                     <div className="space-y-2">
-                                       <Label htmlFor="edit_packs_vendidos">Packs Vendidos</Label>
-                                       <Input
-                                         id="edit_packs_vendidos"
-                                         type="number"
-                                         min="0"
-                                         value={editReportForm.packs_vendidos}
-                                         onChange={(e) => setEditReportForm({ ...editReportForm, packs_vendidos: e.target.value })}
-                                         placeholder="0"
-                                       />
-                                     </div>
-                                   </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit_cross_selling">Cross Selling</Label>
+                                    <Input
+                                      id="edit_cross_selling"
+                                      type="number"
+                                      min="0"
+                                      value={editReportForm.cross_selling}
+                                      onChange={(e) => setEditReportForm({ ...editReportForm, cross_selling: e.target.value })}
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit_onboarding">Onboarding</Label>
+                                    <Input
+                                      id="edit_onboarding"
+                                      type="number"
+                                      min="0"
+                                      value={editReportForm.onboarding}
+                                      onChange={(e) => setEditReportForm({ ...editReportForm, onboarding: e.target.value })}
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit_packs_vendidos">Packs Vendidos</Label>
+                                    <Input
+                                      id="edit_packs_vendidos"
+                                      type="number"
+                                      min="0"
+                                      value={editReportForm.packs_vendidos}
+                                      onChange={(e) => setEditReportForm({ ...editReportForm, packs_vendidos: e.target.value })}
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                </div>
 
-                                   <div className="space-y-2">
-                                     <Label htmlFor="edit_onboarding_details">Detalhes do Onboarding</Label>
-                                     <Textarea
-                                       id="edit_onboarding_details"
-                                       value={editReportForm.onboarding_details}
-                                       onChange={(e) => setEditReportForm({ ...editReportForm, onboarding_details: e.target.value })}
-                                       placeholder="Descreva os detalhes dos onboardings..."
-                                       rows={2}
-                                     />
-                                   </div>
-                                 </>
-                               )}
+                                <div className="space-y-2">
+                                  <Label htmlFor="edit_onboarding_details">Detalhes do Onboarding</Label>
+                                  <Textarea
+                                    id="edit_onboarding_details"
+                                    value={editReportForm.onboarding_details}
+                                    onChange={(e) => setEditReportForm({ ...editReportForm, onboarding_details: e.target.value })}
+                                    placeholder="Descreva os detalhes dos onboardings..."
+                                    rows={2}
+                                  />
+                                </div>
                              </div>
                            </div>
                          ) : (
