@@ -317,17 +317,7 @@ const Dashboard = () => {
     }
     
     // Set the actual period information for the badge
-    if (actualWeekUsed && (currentPeriod === "HOJE" || currentPeriod === "SEMANAL")) {
-      const usedDate = new Date(actualWeekUsed);
-      const endDate = new Date(usedDate);
-      endDate.setDate(usedDate.getDate() + 6); // Sunday of that week
-      
-      setActualPeriodUsed({
-        period: currentPeriod === "HOJE" ? "Licenças da Semana Atual" : "Licenças da Semana",
-        startDate: usedDate.toLocaleDateString('pt-BR'),
-        endDate: endDate.toLocaleDateString('pt-BR')
-      });
-    } else if (currentPeriod === "MENSAL") {
+    if (currentPeriod === "MENSAL") {
       const today = new Date();
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
       const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
@@ -336,6 +326,16 @@ const Dashboard = () => {
         period: "Licenças do Mês",
         startDate: firstDay.toLocaleDateString('pt-BR'),
         endDate: lastDay.toLocaleDateString('pt-BR')
+      });
+    } else if (actualWeekUsed && (currentPeriod === "HOJE" || currentPeriod === "SEMANAL")) {
+      const usedDate = new Date(actualWeekUsed);
+      const endDate = new Date(usedDate);
+      endDate.setDate(usedDate.getDate() + 6); // Sunday of that week
+      
+      setActualPeriodUsed({
+        period: currentPeriod === "HOJE" ? "Licenças da Semana Atual" : "Licenças da Semana",
+        startDate: usedDate.toLocaleDateString('pt-BR'),
+        endDate: endDate.toLocaleDateString('pt-BR')
       });
     } else if (currentPeriod === "PERSONALIZADO") {
       setActualPeriodUsed({
