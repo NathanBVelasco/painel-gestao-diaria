@@ -934,14 +934,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Period indicator badge */}
-      {actualPeriodUsed && (
-        <div className="flex justify-center">
-          <Badge variant="outline" className="px-3 py-1.5 text-sm bg-primary/5 border-primary/20 text-primary">
-            📅 {actualPeriodUsed.period}: {actualPeriodUsed.startDate} - {actualPeriodUsed.endDate}
-          </Badge>
-        </div>
-      )}
 
       {/* Daylin Alert - only for sellers, not gestors */}
       {showDaylinAlert && !isGestor && (
