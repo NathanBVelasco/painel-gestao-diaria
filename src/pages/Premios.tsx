@@ -244,8 +244,8 @@ const Premios = () => {
             ...prize,
             creator_name: creatorMap.get(prize.created_by),
             achievement: (userAchievement || (calculatedProgress > 0)) ? {
-              achieved_at: calculatedProgress >= 100 ? new Date().toISOString() : "",
-              progress: calculatedProgress,
+              achieved_at: userAchievement?.achieved_at || (calculatedProgress >= 100 ? new Date().toISOString() : ""),
+              progress: userAchievement?.progress || calculatedProgress,
             } : undefined,
           };
         })
@@ -1113,19 +1113,19 @@ const Premios = () => {
                 {activePrizes.map((prize) => (
                   <div
                     key={prize.id}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      prize.achievement?.achieved_at
-                        ? "border-success bg-success/5"
-                        : "border-border bg-card"
-                    }`}
+                     className={`p-4 rounded-lg border-2 transition-all ${
+                       (prize.achievement?.achieved_at || (prize.achievement && prize.achievement.progress >= 100))
+                         ? "border-success bg-success/5"
+                         : "border-border bg-card"
+                     }`}
                   >
                      <div className="flex justify-between items-start mb-2">
-                       <h3 className="font-semibold flex items-center gap-2">
-                         {prize.achievement?.achieved_at && (
-                           <CheckCircle className="h-4 w-4 text-success" />
-                         )}
-                         {prize.title}
-                       </h3>
+                         <h3 className="font-semibold flex items-center gap-2">
+                           {(prize.achievement?.achieved_at || (prize.achievement && prize.achievement.progress >= 100)) && (
+                             <CheckCircle className="h-4 w-4 text-success" />
+                           )}
+                           {prize.title}
+                         </h3>
                        <div className="flex items-center gap-2">
                          {isGestor && (
                            <Button
@@ -1194,12 +1194,12 @@ const Premios = () => {
                            <span className="text-sm font-medium">{prize.achievement.progress}%</span>
                          </div>
                          <Progress value={prize.achievement.progress} className="h-2" />
-                         {prize.achievement.achieved_at && (
-                           <div className="mt-2 flex items-center gap-2 text-success text-sm">
-                             <Star className="h-3 w-3" />
-                             <span>Conquistado em {new Date(prize.achievement.achieved_at).toLocaleDateString('pt-BR')}</span>
-                           </div>
-                         )}
+                           {(prize.achievement?.achieved_at || (prize.achievement && prize.achievement.progress >= 100)) && (
+                             <div className="mt-2 flex items-center gap-2 text-success text-sm">
+                               <Star className="h-3 w-3" />
+                               <span>Conquistado em {new Date(prize.achievement.achieved_at || new Date()).toLocaleDateString('pt-BR')}</span>
+                             </div>
+                           )}
                        </div>
                      )}
 
