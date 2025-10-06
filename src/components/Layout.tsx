@@ -2,7 +2,7 @@ import { Outlet, Navigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/contexts/AuthContext";
-import { Building } from "lucide-react";
+import { Building, Bug } from "lucide-react";
 
 export function Layout() {
   const { user, loading } = useAuth();
@@ -36,6 +36,7 @@ export function Layout() {
             <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
             
             <div className="flex items-center gap-2">
+              <Bug className="h-6 w-6 text-yellow-500" />
               <h1 className="font-bold text-xl text-foreground">SAAS FARMERS</h1>
               <span className="text-sm text-muted-foreground">• TotalCAD Softwares</span>
             </div>
