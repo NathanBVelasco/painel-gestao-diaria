@@ -293,6 +293,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_prize_achievements_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "prize_achievements_prize_id_fkey"
             columns: ["prize_id"]
             isOneToOne: false
