@@ -37,7 +37,7 @@ export function Layout() {
             <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
             
             <div className="flex items-center gap-2">
-              <img src={beeIcon} alt="Bee" className="h-8 w-8 rounded-full" />
+              <img src={beeIcon} alt="Bee" className="h-12 w-12 rounded-full" />
               <h1 className="font-bold text-xl text-foreground">SAAS FARMERS</h1>
               <span className="text-sm text-muted-foreground">• TotalCAD Softwares</span>
             </div>
