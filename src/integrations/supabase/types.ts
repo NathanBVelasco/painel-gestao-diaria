@@ -443,6 +443,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -482,6 +500,13 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_gestor: {
         Args: { user_id: string }
         Returns: boolean
@@ -492,6 +517,7 @@ export type Database = {
       }
     }
     Enums: {
+      app_role: "gestor" | "vendedor"
       product_type: "trimble" | "chaos"
       software_category:
         | "modelagem_3d"
@@ -627,6 +653,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["gestor", "vendedor"],
       product_type: ["trimble", "chaos"],
       software_category: [
         "modelagem_3d",
