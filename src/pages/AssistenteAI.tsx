@@ -26,7 +26,7 @@ interface Message {
 }
 
 const AssistenteAI = () => {
-  const { user } = useAuth();
+  const { user, isGestor } = useAuth();
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -34,6 +34,8 @@ const AssistenteAI = () => {
   const [chatTone, setChatTone] = useState("amigavel");
   const [activeFocus, setActiveFocus] = useState<string>("nenhum");
   const [softwares, setSoftwares] = useState<SoftwareKnowledge[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [availableUsers, setAvailableUsers] = useState<Array<{user_id: string, name: string}>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -42,11 +44,32 @@ const AssistenteAI = () => {
     loadUserPreferences();
     loadSoftwareList();
     loadConversationHistory();
-  }, [user?.id]);
+    if (isGestor) {
+      loadAvailableUsers();
+    }
+  }, [user?.id, isGestor]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const loadAvailableUsers = async () => {
+    if (!isGestor) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, name')
+        .neq('user_id', user?.id)
+        .order('name');
+        
+      if (!error && data) {
+        setAvailableUsers(data);
+      }
+    } catch (error) {
+      console.error("Error loading users:", error);
+    }
+  };
 
   const loadSoftwareList = async () => {
     try {
@@ -87,14 +110,15 @@ const AssistenteAI = () => {
     }
   };
 
-  const loadConversationHistory = async () => {
-    if (!user?.id) return;
+  const loadConversationHistory = async (targetUserId?: string) => {
+    const userIdToLoad = targetUserId || user?.id;
+    if (!userIdToLoad) return;
 
     try {
       const { data, error } = await supabase
         .from('ai_conversations')
         .select('message, response, attachments, created_at')
-        .eq('user_id', user.id)
+        .eq('user_id', userIdToLoad)
         .order('created_at', { ascending: true })
         .limit(50); // Load last 50 conversations
 
@@ -122,6 +146,8 @@ const AssistenteAI = () => {
         });
 
         setMessages(historicalMessages);
+      } else {
+        setMessages([]);
       }
     } catch (error) {
       console.error('Error loading conversation history:', error);
@@ -258,6 +284,37 @@ const AssistenteAI = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* User Selection for Gestors */}
+              {isGestor && (
+                <div className="space-y-2 p-4 bg-muted/50 rounded-lg border">
+                  <Label htmlFor="user-select">Visualizar conversas de:</Label>
+                  <Select 
+                    value={selectedUserId || user?.id} 
+                    onValueChange={(value) => {
+                      setSelectedUserId(value);
+                      loadConversationHistory(value);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um usuário" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={user?.id || ""}>Minhas conversas</SelectItem>
+                      {availableUsers.map((u) => (
+                        <SelectItem key={u.user_id} value={u.user_id}>
+                          {u.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedUserId && selectedUserId !== user?.id && (
+                    <Badge variant="secondary" className="mt-2">
+                      📊 Visualizando histórico de outro usuário
+                    </Badge>
+                  )}
+                </div>
+              )}
+
               {/* Tone and Software Focus Selection */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
