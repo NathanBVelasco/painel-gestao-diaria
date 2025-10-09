@@ -54,8 +54,12 @@ const AssistenteAI = () => {
   }, [messages]);
 
   const loadAvailableUsers = async () => {
-    if (!isGestor) return;
+    if (!isGestor) {
+      console.log("User is not gestor, skipping user list load");
+      return;
+    }
     
+    console.log("Loading available users for gestor...");
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -63,11 +67,19 @@ const AssistenteAI = () => {
         .neq('user_id', user?.id)
         .order('name');
         
-      if (!error && data) {
+      if (error) {
+        console.error("Error loading users:", error);
+        toast.error("Erro ao carregar lista de usuários");
+        return;
+      }
+      
+      console.log("Available users loaded:", data);
+      if (data) {
         setAvailableUsers(data);
       }
     } catch (error) {
       console.error("Error loading users:", error);
+      toast.error("Erro ao carregar lista de usuários");
     }
   };
 
