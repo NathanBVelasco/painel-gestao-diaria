@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { MessageCircle, Send, Loader2, Paperclip, X, Bot, User, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MarkdownText } from "@/components/MarkdownText";
 import { AIExpertiseConfig } from "@/components/AIExpertiseConfig";
 
 interface SoftwareKnowledge {
@@ -415,7 +416,9 @@ const AssistenteAI = () => {
                             : "bg-muted"
                         )}
                       >
-                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                        <div className="whitespace-pre-wrap">
+                          <MarkdownText text={msg.content} />
+                        </div>
                         {msg.attachments && msg.attachments.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-1">
                             {msg.attachments.map((att, i) => (
