@@ -466,20 +466,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_access_sensitive_business_data: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      get_current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_own_email: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      can_access_sensitive_business_data: { Args: never; Returns: boolean }
+      get_current_user_role: { Args: never; Returns: string }
+      get_own_email: { Args: never; Returns: string }
       get_secure_team_basic_info: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           name: string
           role: Database["public"]["Enums"]["user_role"]
@@ -487,7 +478,7 @@ export type Database = {
         }[]
       }
       get_user_ranking_positions: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           cross_selling_position: number
           onboarding_position: number
@@ -496,10 +487,7 @@ export type Database = {
           sales_position: number
         }[]
       }
-      get_user_software_access_level: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_user_software_access_level: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -507,10 +495,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_gestor: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
+      is_gestor: { Args: { user_id: string }; Returns: boolean }
       log_profile_access: {
         Args: { access_type: string; profile_id: string }
         Returns: undefined
