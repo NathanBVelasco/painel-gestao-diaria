@@ -503,54 +503,56 @@ const Dashboard = () => {
         console.log("DEBUG - Monthly/Custom period logic for licenses, isGestor:", isGestor, "selectedSeller:", selectedSeller);
         const isGestorAllTeam = isGestor && selectedSeller === "TODOS";
         
-        // For Monthly/Custom: sum ALL "licenças a renovar" from ALL reports in the period
-        if (licenseReports && licenseReports.length > 0) {
-          console.log("DEBUG - Monthly/Custom: Processing", licenseReports.length, "reports for licenças a renovar");
-          
-          let totalLicencasRenovar = 0;
-          licenseReports.forEach(report => {
-            let reportTotal = 0;
-            if (product === "TRIMBLE" || product === "TODOS") {
-              const sketchupToRenew = report.sketchup_to_renew || 0;
-              reportTotal += sketchupToRenew;
-              console.log("DEBUG - Report", report.user_id, "sketchup_to_renew:", sketchupToRenew);
-            }
-            if (product === "CHAOS" || product === "TODOS") {
-              const chaosToRenew = report.chaos_to_renew || 0;
-              reportTotal += chaosToRenew;
-              console.log("DEBUG - Report", report.user_id, "chaos_to_renew:", chaosToRenew);
-            }
-            totalLicencasRenovar += reportTotal;
-            console.log("DEBUG - Report", report.user_id, "total to renew:", reportTotal);
-          });
-          
-          licensePeriodTotals.licencasRenovar = totalLicencasRenovar;
-          console.log("DEBUG - Monthly/Custom: Final licencasRenovar total:", totalLicencasRenovar);
-        }
+        // Use calculateLicensesToRenew for consistent logic
+        licensePeriodTotals.licencasRenovar = calculateLicensesToRenew(licenseReports, isGestorAllTeam, period);
         
-        // For Monthly/Custom: sum ALL "renovado" from ALL reports in the period (same logic as licenças a renovar)
-        if (licenseReports && licenseReports.length > 0) {
-          console.log("DEBUG - Monthly/Custom: Processing", licenseReports.length, "reports for renovado");
-          
-          let totalRenovado = 0;
-          licenseReports.forEach(report => {
-            let reportTotal = 0;
-            if (product === "TRIMBLE" || product === "TODOS") {
-              const sketchupRenewed = report.sketchup_renewed || 0;
-              reportTotal += sketchupRenewed;
-              console.log("DEBUG - Report", report.user_id, "sketchup_renewed:", sketchupRenewed);
+        // For "renovado": use same logic as weekly - get last valid report per user
+        if (isGestorAllTeam) {
+          // Group reports by user_id
+          if (licenseReports && licenseReports.length > 0) {
+            const userReportsMap = new Map();
+            licenseReports.forEach(report => {
+              if (!userReportsMap.has(report.user_id)) {
+                userReportsMap.set(report.user_id, []);
+              }
+              userReportsMap.get(report.user_id).push(report);
+            });
+            
+            console.log("DEBUG - Monthly/Custom: Processing", userReportsMap.size, "users for renovado");
+            
+            // For each user, find their last valid renovado report and sum
+            userReportsMap.forEach((userReports, userId) => {
+              const latestValidReport = findLastValidRenovadoReport(userReports);
+              if (latestValidReport) {
+                let userRenovado = 0;
+                if (product === "TRIMBLE" || product === "TODOS") {
+                  userRenovado += latestValidReport.sketchup_renewed || 0;
+                }
+                if (product === "CHAOS" || product === "TODOS") {
+                  userRenovado += latestValidReport.chaos_renewed || 0;
+                }
+                licensePeriodTotals.renovadoQty += userRenovado;
+                console.log("DEBUG - User", userId, "renovado:", userRenovado);
+              }
+            });
+            
+            console.log("DEBUG - Monthly/Custom: Final renovado total:", licensePeriodTotals.renovadoQty);
+          }
+        } else {
+          // Single user: use latest valid report
+          if (licenseReports && licenseReports.length > 0) {
+            const latestValidReport = findLastValidRenovadoReport(licenseReports);
+            
+            if (latestValidReport) {
+              if (product === "TRIMBLE" || product === "TODOS") {
+                licensePeriodTotals.renovadoQty += latestValidReport.sketchup_renewed || 0;
+              }
+              if (product === "CHAOS" || product === "TODOS") {
+                licensePeriodTotals.renovadoQty += latestValidReport.chaos_renewed || 0;
+              }
+              console.log("DEBUG - Monthly/Custom: Single user renovado:", licensePeriodTotals.renovadoQty);
             }
-            if (product === "CHAOS" || product === "TODOS") {
-              const chaosRenewed = report.chaos_renewed || 0;
-              reportTotal += chaosRenewed;
-              console.log("DEBUG - Report", report.user_id, "chaos_renewed:", chaosRenewed);
-            }
-            totalRenovado += reportTotal;
-            console.log("DEBUG - Report", report.user_id, "total renewed:", reportTotal);
-          });
-          
-          licensePeriodTotals.renovadoQty = totalRenovado;
-          console.log("DEBUG - Monthly/Custom: Final renovado total:", totalRenovado);
+          }
         }
       }
 
